@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анимация сложения сигналов</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        label {
+            margin: 5px 0;
+        }
+        .chart-container {
+            width: 800px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Сложение возмущения</h1>
+    <div id="controls">
+        <label for="staticSignal">Стационарное возмущение:</label>
+        <select id="staticSignal">
+            <option value="square">Плоский</option>
+            <option value="delta">Острый</option>
+            <option value="decaying">Затухающий быстро</option>
+            <option value="decayingSlow">Затухающий медлено</option>
+            <option value="lognormal">С разгоном</option>
+        </select>
+        
+	<label for="movingSignal">Набегает:</label>
+        <select id="movingSignal">
+            <option value="square">Плоский</option>
+            <option value="delta">Острый</option>
+            <option value="decaying">Затухающий быстро</option>
+            <option value="decayingSlow">Затухающий медлено</option>
+            <option value="lognormal">С разгоном</option>
+            <option value="random">Случайный</option>
+        </select>
+        
+        <label>
+            <input type="checkbox" id="slowMotion"> Помедленее!!
+        </label>
+        <label>
+            <input type="checkbox" id="tripleMode"> Пусть сразу много прилетает
+        </label>
+    </div>
+    <div class="chart-container"><canvas id="chart"></canvas></div>
+
+    <script>
+        const ctx = document.getElementById('chart').getContext('2d');
+        let chart;
+        let staticSignalType = 'square';
+        let movingSignalType = 'square';
+        let animationOffset = [200, 300, 400];
+        let isSlowMotion = false;
+        let isTripleMode = false;
+        const signalTypes = ['square', 'delta', 'decaying', 'decayingSlow', 'lognormal'];
+        let randomSignals = [getRandomSignalType(), getRandomSignalType(), getRandomSignalType()];
+
+        function getRandomSignalType() {
+            return signalTypes[Math.floor(Math.random() * signalTypes.length)];
+        }
+
+        function lognormal(x, mu, sigma) {
+            if (x <= 0) return 0;
+            const coefficient = 1 / (x * sigma * Math.sqrt(2 * Math.PI));
+            const exponent = -Math.pow(Math.log(x) - mu, 2) / (2 * Math.pow(sigma, 2));
+            return coefficient * Math.exp(exponent);
+        }
+
+        function generateSignal(type, offset = 0) {
+            const x = Array.from({length: 400}, (_, i) => i - 200);
+            let y;
+            switch (type) {
+                case 'square':
+                    y = x.map(v => Math.abs(v - offset) < 20 ? 1 : 0);
+                    break;
+                case 'delta':
+                    y = x.map(v => Math.abs(v - offset) < 1 ? 1 : 0);
+                    break;
+                case 'decaying':
+                    y = x.map(v => v >= offset ? Math.exp(-(v - offset) * 0.1) : 0);
+                    break;
+                case 'decayingSlow':
+                    y = x.map(v => v >= offset ? Math.exp(-(v - offset) * 0.05) : 0);
+                    break;
+                case 'lognormal':
+                    const mu = 0;
+                    const sigma = 0.5;
+                    const scale = 1;
+                    y = x.map(v => lognormal((v - offset + 40) / 20, mu, sigma) * scale);
+                    break;
+            }
+            return y;
+        }
+
+        function updateChart() {
+            const staticSignal = generateSignal(staticSignalType, -15);
+            let sumSignal = [...staticSignal];
+
+            if (isTripleMode) {
+                animationOffset.forEach((offset, index) => {
+                    const signalType = movingSignalType === 'random' ? randomSignals[index] : movingSignalType;
+                    const movingSignal = generateSignal(signalType, offset);
+                    sumSignal = sumSignal.map((v, i) => v + movingSignal[i]);
+                });
+            } else {
+                const signalType = movingSignalType === 'random' ? randomSignals[0] : movingSignalType;
+                const movingSignal = generateSignal(signalType, animationOffset[0]);
+                sumSignal = sumSignal.map((v, i) => v + movingSignal[i]);
+            }
+
+            chart.data.datasets[0].data = sumSignal;
+            chart.update();
+        }
+
+        function createChart() {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 400}, (_, i) => i - 200),
+                    datasets: [{
+                        data: [],
+                        borderColor: 'rgba(0, 255, 0, 1)',
+                        backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                        fill: false,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: -200,
+                            max: 200
+                        },
+                        y: {
+                            min: -0.1,
+                            max: 3.1
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    animation: {
+                        duration: 0
+                    }
+                }
+            });
+        }
+
+        chart = createChart();
+
+        document.getElementById('staticSignal').addEventListener('change', (e) => {
+            staticSignalType = e.target.value;
+            updateChart();
+        });
+
+        document.getElementById('movingSignal').addEventListener('change', (e) => {
+            movingSignalType = e.target.value;
+            animationOffset = [200, 300, 400];
+            randomSignals = [getRandomSignalType(), getRandomSignalType(), getRandomSignalType()];
+            updateChart();
+        });
+
+        document.getElementById('slowMotion').addEventListener('change', (e) => {
+            isSlowMotion = e.target.checked;
+        });
+
+        document.getElementById('tripleMode').addEventListener('change', (e) => {
+            isTripleMode = e.target.checked;
+            animationOffset = [200, 300, 400];
+            randomSignals = [getRandomSignalType(), getRandomSignalType(), getRandomSignalType()];
+            updateChart();
+        });
+
+        function animate() {
+            const speed = isSlowMotion ? 0.5 : 1;
+            animationOffset = animationOffset.map((offset, index) => {
+                offset -= speed;
+                if (offset < -200) {
+                    if (movingSignalType === 'random') {
+                        randomSignals[index] = getRandomSignalType();
+                    }
+                    return isTripleMode ? Math.max(...animationOffset) + 100 : 200;
+                }
+                return offset;
+            });
+            updateChart();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
