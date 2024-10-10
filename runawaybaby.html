@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задача убегания</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .controls-row {
+            display: flex;
+            gap: 10px;
+        }
+        select, button {
+            padding: 5px;
+        }
+        button {
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #startBtn { background-color: #4CAF50; }
+        #teleportBtn { background-color: #008CBA; }
+        #extendBtn { background-color: #808080; }
+        canvas {
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="controls-row">
+            <select id="preySpeed">
+                <option value="1">Жертва: медленно</option>
+                <option value="2" selected>Жертва: средне</option>
+                <option value="3">Жертва: быстро</option>
+            </select>
+            <select id="predatorSpeed">
+                <option value="1">Хищник: медленно</option>
+                <option value="2" selected>Хищник: средне</option>
+                <option value="3">Хищник: быстро</option>
+            </select>
+            <select id="preyMovement">
+                <option value="sine">Синусоида</option>
+                <option value="spiral">Спираль</option>
+                <option value="circle">Круг</option>
+            </select>
+        </div>
+        <div class="controls-row">
+            <button id="startBtn">Старт</button>
+            <button id="teleportBtn">Телепорт</button>
+            <button id="extendBtn">Продлить</button>
+        </div>
+    </div>
+    <canvas id="canvas" width="600" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const teleportBtn = document.getElementById('teleportBtn');
+        const extendBtn = document.getElementById('extendBtn');
+        const preySpeedSelect = document.getElementById('preySpeed');
+        const predatorSpeedSelect = document.getElementById('predatorSpeed');
+        const preyMovementSelect = document.getElementById('preyMovement');
+
+        let prey = { x: 400, y: 200, speed: 2 };
+        let predator = { x: 50, y: 50, speed: 2 };
+        let time = 0;
+        let animationId;
+        let startTime;
+        let timeLimit = 15;
+
+        function drawCircle(x, y, radius, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function movePreySine() {
+            prey.x += prey.speed;
+            prey.y = 200 + Math.sin(time * 0.05) * 100;
+        }
+
+        function movePraySpiral() {
+            let angle = time * 0.1;
+            let radius = 50 + time * 0.5;
+            prey.x = 300 + Math.cos(angle) * radius;
+            prey.y = 200 + Math.sin(angle) * radius;
+        }
+
+        function movePrayCircle() {
+            let angle = time * 0.05;
+            prey.x = 300 + Math.cos(angle) * 150;
+            prey.y = 200 + Math.sin(angle) * 150;
+        }
+
+        function movePredator() {
+            let dx = prey.x - predator.x;
+            let dy = prey.y - predator.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            predator.x += (dx / distance) * predator.speed;
+            predator.y += (dy / distance) * predator.speed;
+        }
+
+        function keepPreyInBounds() {
+            prey.x = Math.max(0, Math.min(prey.x, canvas.width));
+            prey.y = Math.max(0, Math.min(prey.y, canvas.height));
+        }
+
+        function teleport() {
+            prey.x = Math.random() * canvas.width;
+            prey.y = Math.random() * canvas.height;
+            predator.x = Math.random() * canvas.width;
+            predator.y = Math.random() * canvas.height;
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            switch(preyMovementSelect.value) {
+                case 'sine': movePreySine(); break;
+                case 'spiral': movePraySpiral(); break;
+                case 'circle': movePrayCircle(); break;
+            }
+
+            keepPreyInBounds();
+            movePredator();
+
+            drawCircle(prey.x, prey.y, 5, 'blue');
+            drawCircle(predator.x, predator.y, 5, 'red');
+
+            time++;
+
+            let elapsedTime = (Date.now() - startTime) / 1000;
+            let remainingTime = Math.max(0, timeLimit - elapsedTime);
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Время: ${remainingTime.toFixed(1)}`, 10, 30);
+
+            if (elapsedTime < timeLimit && Math.hypot(prey.x - predator.x, prey.y - predator.y) > 5) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                cancelAnimationFrame(animationId);
+                ctx.fillStyle = 'black';
+                ctx.font = '30px Arial';
+                ctx.fillText('Погоня окончена', 200, 200);
+                if (elapsedTime >= timeLimit) {
+                    ctx.fillText('Хищник умер с голоду', 200, 250);
+                } else {
+                    ctx.fillText('Хищник поймал жертву', 200, 250);
+                }
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            prey = { x: 400, y: 200, speed: parseInt(preySpeedSelect.value) };
+            predator = { x: 50, y: 50, speed: parseInt(predatorSpeedSelect.value) };
+            time = 0;
+            startTime = Date.now();
+            timeLimit = 15;
+            animate();
+        });
+
+        teleportBtn.addEventListener('click', teleport);
+
+        extendBtn.addEventListener('click', () => {
+            timeLimit += 10;
+        });
+    </script>
+</body>
+</html>
