@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерференция волн</title>
+    <style>
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            overflow-x: hidden;
+        }
+        canvas { 
+            border: 1px solid black; 
+            margin: 10px 0; 
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+        #resetButton {
+            margin-right: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        #sourceCount {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="waveProfile"></canvas>
+    <canvas id="waveHeatmap"></canvas>
+    <div id="controls">
+        <button id="resetButton">Сброс</button>
+        <div id="sourceCount">Активных источников: 0/5</div>
+    </div>
+
+    <script>
+        const FILL = 'white';
+        const MAX_SOURCES = 5;
+        const sources = [];
+
+        const waveProfile = document.getElementById('waveProfile');
+        const waveHeatmap = document.getElementById('waveHeatmap');
+        const ctxProfile = waveProfile.getContext('2d');
+        const ctxHeatmap = waveHeatmap.getContext('2d');
+        const sourceCountDisplay = document.getElementById('sourceCount');
+
+        const resetButton = document.getElementById('resetButton');
+
+        const colors = [
+            [37, 206, 209],    // Robin egg blue
+            [184, 51, 106],    // Raspberry rose
+            [219, 194, 207],   // Thistle
+            [58, 12, 163],     // Zaffre
+            [237, 180, 88]     // Hunyadi yellow
+        ];
+
+        function resize() {
+            const width = window.innerWidth - 20;
+            waveProfile.width = width;
+            waveProfile.height = 200;
+            waveHeatmap.width = width;
+            waveHeatmap.height = 400;
+        }
+
+        function addSource(x, y) {
+            if (sources.length < MAX_SOURCES) {
+                sources.push({
+                    x,
+                    y,
+                    color: colors[sources.length],
+                    phase: 0
+                });
+                sourceCountDisplay.textContent = `Активных источников: ${sources.length}/${MAX_SOURCES}`;
+            }
+        }
+
+        function reset() {
+            sources.length = 0;
+            sourceCountDisplay.textContent = `Активных источников: 0/${MAX_SOURCES}`;
+            ctxProfile.clearRect(0, 0, waveProfile.width, waveProfile.height);
+            ctxHeatmap.clearRect(0, 0, waveHeatmap.width, waveHeatmap.height);
+        }
+
+        function drawWaves() {
+            ctxProfile.fillStyle = FILL;
+            ctxProfile.fillRect(0, 0, waveProfile.width, waveProfile.height);
+            ctxHeatmap.fillStyle = FILL;
+            ctxHeatmap.fillRect(0, 0, waveHeatmap.width, waveHeatmap.height);
+
+            const imageData = ctxHeatmap.createImageData(waveHeatmap.width, waveHeatmap.height);
+
+            for (let x = 0; x < waveHeatmap.width; x++) {
+                let totalAmplitude = 0;
+
+                for (let y = 0; y < waveHeatmap.height; y++) {
+                    let amplitude = 0;
+                    let r = 255, g = 255, b = 255;
+
+                    for (const source of sources) {
+                        const dx = x - source.x;
+                        const dy = y - source.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const waveAmplitude = Math.sin(distance * 0.3 - source.phase) / (1 + distance * 0.05);
+                        
+                        amplitude += waveAmplitude;
+                        r -= waveAmplitude * (255 - source.color[0]);
+                        g -= waveAmplitude * (255 - source.color[1]);
+                        b -= waveAmplitude * (255 - source.color[2]);
+                    }
+
+                    const index = (y * waveHeatmap.width + x) * 4;
+                    imageData.data[index] = Math.max(0, Math.min(255, r));
+                    imageData.data[index + 1] = Math.max(0, Math.min(255, g));
+                    imageData.data[index + 2] = Math.max(0, Math.min(255, b));
+                    imageData.data[index + 3] = 255;
+
+                    if (y === waveHeatmap.height / 2) {
+                        totalAmplitude = amplitude;
+                    }
+                }
+
+                ctxProfile.beginPath();
+                // масштаб эвристикой но вроде влезает
+                ctxProfile.strokeStyle = 'black';
+                ctxProfile.moveTo(x, waveProfile.height / 2);
+                ctxProfile.lineTo(x, waveProfile.height / 2 - totalAmplitude * 50);
+                ctxProfile.stroke();
+            }
+
+            ctxHeatmap.putImageData(imageData, 0, 0);
+
+            for (const s of sources) {
+                s.phase += 0.1;
+            }
+
+            requestAnimationFrame(drawWaves);
+        }
+
+        waveHeatmap.addEventListener('click', (event) => {
+            const rect = waveHeatmap.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            addSource(x, y);
+        });
+
+        resetButton.addEventListener('click', reset);
+
+        window.addEventListener('resize', resize);
+        resize();
+        sourceCountDisplay.textContent = `Активных источников: ${sources.length}/${MAX_SOURCES}`;
+        drawWaves();
+    </script>
+</body>
+</html>
