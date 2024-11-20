@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Interpolation-Shmterpolation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .button-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            min-width: 120px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.crazy {
+            background-color: #ff4081;
+        }
+        button.crazy:hover {
+            background-color: #f50057;
+        }
+        button.reset {
+            background-color: #607d8b;
+        }
+        button.reset:hover {
+            background-color: #455a64;
+        }
+        #canvas {
+            border: 1px solid #ccc;
+            cursor: crosshair;
+            transition: transform 0.1s;
+        }
+        #info {
+            margin-top: 10px;
+            color: #666;
+        }
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 1px, 0); }
+            20%, 80% { transform: translate3d(2px, -2px, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 4px, 0); }
+            40%, 60% { transform: translate3d(4px, -4px, 0); }
+        }
+        .container {
+            position: relative;
+            margin: 20px 0;
+        }
+        #points-left {
+            position: absolute;
+            width: 100%;
+            top: -30px;
+            text-align: center;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+ <div id="controls">
+        <div class="button-row">
+            <button onclick="drawLine()">Прямая</button>
+            <button onclick="drawParabola()">Парабола</button>
+            <button onclick="drawCubicSpline()">Кубический сплайн</button>
+            <button class="reset" onclick="reset()">Сбросить</button>
+        </div>
+        <div class="button-row">
+            <button class="crazy" onclick="drawTrigonometric()">Волнистое</button>
+            <button class="crazy" onclick="drawRational()">С загибами</button>
+            <button class="crazy" onclick="drawFinance()">Как у финансистов</button>
+            <button class="crazy" onclick="drawSteps()">Ступенчатая</button>
+        </div>
+    </div>
+    <div class="container">
+        <div id="points-left">Осталось точек: 6</div>
+        <canvas id="canvas" width="600" height="400"></canvas>
+    </div>
+
+    <div id="info">Кликните, чтобы поставить точки (максимум 6)</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const pointsLeftDisplay = document.getElementById('points-left');
+        let points = [];
+        const MAX_POINTS = 6;
+
+        ctx.fillStyle = '#000';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+
+        function updatePointsLeft() {
+            const left = MAX_POINTS - points.length;
+            pointsLeftDisplay.textContent = `Осталось точек: ${left}`;
+        }
+
+        function shake() {
+            canvas.classList.remove('shake');
+            void canvas.offsetWidth;
+            canvas.classList.add('shake');
+        }
+
+        canvas.addEventListener('click', function(e) {
+            if (points.length >= MAX_POINTS) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            points.push({x, y});
+            drawPoints();
+            updatePointsLeft();
+            shake();
+        });
+
+        function drawPoints() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function reset() {
+            points = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updatePointsLeft();
+        }
+
+        function drawLine() {
+            if (points.length < 2) return;
+
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            points.forEach(p => {
+                sumX += p.x;
+                sumY += p.y;
+                sumXY += p.x * p.y;
+                sumX2 += p.x * p.x;
+            });
+
+            const n = points.length;
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            drawPoints();
+            ctx.beginPath();
+            ctx.moveTo(0, intercept);
+            ctx.lineTo(canvas.width, slope * canvas.width + intercept);
+            ctx.stroke();
+        }
+
+        function drawParabola() {
+            if (points.length < 3) return;
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+            const midX = sortedPoints.reduce((sum, p) => sum + p.x, 0) / sortedPoints.length;
+            const midY = sortedPoints.reduce((sum, p) => sum + p.y, 0) / sortedPoints.length;
+
+            let bestA = 0;
+            let bestH = midX;
+            let bestK = midY;
+            let minError = Infinity;
+
+            // Try different vertex positions around the midpoint
+            for (let h = midX - 50; h <= midX + 50; h += 10) {
+                for (let k = midY - 50; k <= midY + 50; k += 10) {
+                    for (let a = -0.01; a <= 0.01; a += 0.001) {
+                        let sumError = 0;
+                        for (const point of sortedPoints) {
+                            const expectedY = a * Math.pow(point.x - h, 2) + k;
+                            sumError += Math.pow(expectedY - point.y, 2);
+                        }
+                        if (sumError < minError) {
+                            minError = sumError;
+                            bestA = a;
+                            bestH = h;
+                            bestK = k;
+                        }
+                    }
+                }
+            }
+
+            drawPoints();
+            ctx.beginPath();
+
+            const minX = Math.min(...points.map(p => p.x));
+            const maxX = Math.max(...points.map(p => p.x));
+            const padding = (maxX - minX) * 0.2;
+
+            for (let x = minX - padding; x <= maxX + padding; x++) {
+                const y = bestA * Math.pow(x - bestH, 2) + bestK;
+                if (x === minX - padding) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawCubicSpline() {
+            if (points.length < 4) return;
+
+            drawPoints();
+            ctx.beginPath();
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+
+            ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
+
+            for (let i = 0; i < sortedPoints.length - 1; i++) {
+                const p0 = sortedPoints[Math.max(i - 1, 0)];
+                const p1 = sortedPoints[i];
+                const p2 = sortedPoints[i + 1];
+                const p3 = sortedPoints[Math.min(i + 2, sortedPoints.length - 1)];
+
+                for (let t = 0; t <= 1; t += 0.01) {
+                    const t2 = t * t;
+                    const t3 = t2 * t;
+
+                    const x = 0.5 * (
+                        (2 * p1.x) +
+                        (-p0.x + p2.x) * t +
+                        (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+                        (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
+                    );
+
+                    const y = 0.5 * (
+                        (2 * p1.y) +
+                        (-p0.y + p2.y) * t +
+                        (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+                        (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
+                    );
+
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawTrigonometric() {
+            if (points.length < 2) return;
+
+            drawPoints();
+            ctx.beginPath();
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+            const minX = sortedPoints[0].x;
+            const maxX = sortedPoints[sortedPoints.length - 1].x;
+
+            const numPoints = 200;
+            const step = (maxX - minX) / numPoints;
+
+            for(let i = 0; i <= numPoints; i++) {
+                const x = minX + i * step;
+                let y = 0;
+                let weightSum = 0;
+
+                sortedPoints.forEach((point, idx) => {
+                    const dx = (x - point.x) / (maxX - minX);
+                    const weight = 1 / (1 + Math.abs(dx) * 8);
+                    const wave = Math.sin(dx * Math.PI * 15) * 100;
+
+                    y += (point.y + wave * weight) * weight;
+                    weightSum += weight;
+                });
+
+                y /= weightSum;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            ctx.stroke();
+        }
+
+        function drawRational() {
+            if (points.length < 2) return;
+
+            drawPoints();
+            ctx.beginPath();
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+
+            for(let i = 0; i < canvas.width; i++) {
+                let num = 0;
+                let den = 0;
+
+                sortedPoints.forEach(point => {
+                    const dx = i - point.x;
+                    const weight = 1 / (dx * dx + 0.1);
+                    num += point.y * weight;
+                    den += weight;
+                });
+
+                const y = num / den;
+
+                if (i === 0) {
+                    ctx.moveTo(i, y);
+                } else {
+                    ctx.lineTo(i, y);
+                }
+            }
+
+            ctx.stroke();
+        }
+
+        function drawFinance() {
+            if (points.length < 2) return;
+
+            drawPoints();
+            ctx.beginPath();
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+
+            for(let i = 0; i < sortedPoints.length - 1; i++) {
+                const p1 = sortedPoints[i];
+                const p2 = sortedPoints[i + 1];
+
+                const numBounces = 3; // Количество отскоков
+                const bounceHeight = 40; // Высота отскока
+
+                ctx.moveTo(p1.x, p1.y);
+
+                for(let t = 0; t <= 1; t += 0.01) {
+                    const x = p1.x + (p2.x - p1.x) * t;
+                    let y = p1.y + (p2.y - p1.y) * t;
+
+                    const bounce = Math.abs(Math.sin(t * Math.PI * numBounces)) *
+                                 Math.exp(-t * 2) *
+                                 bounceHeight;
+
+                    const wobble = Math.sin(t * 50) * bounce * 0.2;
+
+                    y -= bounce + wobble;
+
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(p2.x, p2.y);
+            }
+
+            ctx.stroke();
+        }
+
+        function drawSteps() {
+            if (points.length < 2) return;
+
+            drawPoints();
+            ctx.beginPath();
+
+            const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+
+            ctx.moveTo(sortedPoints[0].x, sortedPoints[0].y);
+
+            for(let i = 0; i < sortedPoints.length - 1; i++) {
+                const p1 = sortedPoints[i];
+                const p2 = sortedPoints[i + 1];
+                const midX = (p1.x + p2.x) / 2;
+
+                ctx.lineTo(midX, p1.y);
+                ctx.lineTo(midX, p2.y);
+                ctx.lineTo(p2.x, p2.y);
+            }
+
+            ctx.stroke();
+        }
+    </script>
+</body>
+</html>
