@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Интерполяция с весами</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button-row {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            min-width: 120px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background-color: #ff4444;
+        }
+        button.danger:hover {
+            background-color: #cc0000;
+        }
+        #canvas-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        #canvas {
+            border: 1px solid #ccc;
+            cursor: crosshair;
+        }
+        #not-enough-points {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: #666;
+        }
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        #formula, #error {
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-row">
+        <button id="linearBtn" onclick="fit('linear')" disabled>Прямая</button>
+        <button id="parabolaBtn" onclick="fit('parabola')" disabled>Парабола</button>
+        <button id="cubicBtn" onclick="fit('cubic')" disabled>Кубическая</button>
+    </div>
+    <div class="button-row">
+        <button class="danger" onclick="reset()">Сбросить всё</button>
+        <button class="danger" onclick="removeLastPoint()">Удалить последнюю</button>
+    </div>
+    <div id="canvas-container">
+        <canvas id="canvas" width="600" height="400"></canvas>
+        <div id="not-enough-points" style="display: none">Нужно больше точек для подгонки</div>
+    </div>
+    <div id="info">Кликните на канвас, чтобы добавить точку (максимум 10, чтобы что-то интерполировать нужно хотя бы две)</div>
+    <div id="formula"></div>
+    <div id="error"></div>
+    <table id="pointsTable">
+        <thead>
+            <tr>
+                <th>X</th>
+                <th>Y</th>
+                <th>Вес</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const notEnoughPoints = document.getElementById('not-enough-points');
+        let points = [];
+        const MAX_POINTS = 10;
+        const BASE_RADIUS = 4;
+        let currentMode = null;
+
+        const minPoints = {
+            'linear': 2,
+            'parabola': 3,
+            'cubic': 4
+        };
+
+        function updateUI() {
+            document.getElementById('linearBtn').disabled = points.length < minPoints.linear;
+            document.getElementById('parabolaBtn').disabled = points.length < minPoints.parabola;
+            document.getElementById('cubicBtn').disabled = points.length < minPoints.cubic;
+
+            if (currentMode) {
+                notEnoughPoints.style.display = points.length < minPoints[currentMode] ? 'block' : 'none';
+                if (points.length < minPoints[currentMode]) {
+                    document.getElementById('formula').innerHTML = '';
+                    document.getElementById('error').innerHTML = '';
+                }
+            } else {
+                notEnoughPoints.style.display = 'none';
+            }
+        }
+
+        function drawPoints() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            points.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#2196F3';
+                ctx.fill();
+            });
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('pointsTable').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+            points.forEach(p => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = Math.round(p.x);
+                row.insertCell(1).textContent = Math.round(p.y);
+                row.insertCell(2).textContent = p.weight.toFixed(1);
+            });
+        }
+
+        function reset() {
+            points = [];
+            currentMode = null;
+            drawPoints();
+            updateTable();
+            updateUI();
+            document.getElementById('formula').innerHTML = '';
+            document.getElementById('error').innerHTML = '';
+        }
+
+        function removeLastPoint() {
+            if (points.length > 0) {
+                points.pop();
+                drawPoints();
+                updateTable();
+                updateUI();
+                if (currentMode) fit(currentMode);
+            }
+        }
+
+        function findNearestPoint(x, y) {
+            for (let i = 0; i < points.length; i++) {
+                const dx = points[i].x - x;
+                const dy = points[i].y - y;
+                if (Math.sqrt(dx*dx + dy*dy) < points[i].radius * 2) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const nearestIdx = findNearestPoint(x, y);
+            if (nearestIdx !== -1) {
+                points[nearestIdx].radius += 2;
+                points[nearestIdx].weight *= 1.5;
+            } else if (points.length < MAX_POINTS) {
+                points.push({x, y, radius: BASE_RADIUS, weight: 1});
+            }
+            
+            drawPoints();
+            updateTable();
+            updateUI();
+            if (currentMode) fit(currentMode);
+        });
+
+        function calculateRMSE(predictions) {
+            let sumSquaredError = 0;
+            let sumWeights = 0;
+            points.forEach((p, i) => {
+                sumSquaredError += Math.pow(predictions[i] - p.y, 2) * p.weight;
+                sumWeights += p.weight;
+            });
+            return Math.sqrt(sumSquaredError / sumWeights);
+        }
+
+        function fit(mode) {
+            if (points.length < minPoints[mode]) return;
+            currentMode = mode;
+            updateUI();
+            
+            const X = points.map(p => [1]);
+            const y = points.map(p => p.y);
+            const w = points.map(p => p.weight);
+            
+            if (mode === 'linear' || mode === 'parabola' || mode === 'cubic') {
+                points.forEach((p, i) => {
+                    if (mode === 'linear') X[i].push(p.x);
+                    if (mode === 'parabola') X[i].push(p.x, p.x * p.x);
+                    if (mode === 'cubic') X[i].push(p.x, p.x * p.x, p.x * p.x * p.x);
+                });
+            }
+            
+            const Xw = X.map((row, i) => row.map(x => x * Math.sqrt(w[i])));
+            const yw = y.map((yi, i) => yi * Math.sqrt(w[i]));
+            
+            const XtX = multiply(transpose(Xw), Xw);
+            const Xty = multiply(transpose(Xw), yw);
+            const coeffs = solve(XtX, Xty);
+            
+            const predictions = multiply(X, coeffs);
+            const rmse = calculateRMSE(predictions);
+            
+            drawPoints();
+            ctx.beginPath();
+            ctx.strokeStyle = '#4CAF50';
+            for (let px = 0; px < canvas.width; px += 2) {
+                let py = coeffs[0];
+                for (let power = 1; power < coeffs.length; power++) {
+                    py += coeffs[power] * Math.pow(px, power);
+                }
+                if (px === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            
+            let formula = 'y = ';
+            if (mode === 'cubic') formula += `${coeffs[3].toFixed(6)}x³ + `;
+            if (mode === 'cubic' || mode === 'parabola') formula += `${coeffs[2].toFixed(4)}x² + `;
+            formula += `${coeffs[1].toFixed(2)}x + ${coeffs[0].toFixed(2)}`;
+            
+            document.getElementById('formula').innerHTML = formula;
+            document.getElementById('error').innerHTML = `Средняя квадратичная ошибка: ${rmse.toFixed(2)}`;
+        }
+
+        function transpose(matrix) {
+            return matrix[0].map((_, i) => matrix.map(row => row[i]));
+        }
+
+        function multiply(a, b) {
+            if (!Array.isArray(b[0])) { // Matrix * vector
+                return a.map(row => 
+                    row.reduce((sum, val, j) => sum + val * b[j], 0)
+                );
+            }
+            return a.map(row => 
+                b[0].map((_, j) => 
+                    row.reduce((sum, val, k) => sum + val * b[k][j], 0)
+                )
+            );
+        }
+
+        function solve(A, b) {
+            const n = A.length;
+            const augmented = A.map((row, i) => [...row, b[i]]);
+            
+            for (let i = 0; i < n; i++) {
+                let maxEl = Math.abs(augmented[i][i]);
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(augmented[k][i]) > maxEl) {
+                        maxEl = Math.abs(augmented[k][i]);
+                        maxRow = k;
+                    }
+                }
+                
+                [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                
+                for (let k = i + 1; k < n; k++) {
+                    const factor = augmented[k][i] / augmented[i][i];
+                    for (let j = i; j <= n; j++) {
+                        augmented[k][j] -= factor * augmented[i][j];
+                    }
+                }
+            }
+            
+            const solution = new Array(n);
+            for (let i = n - 1; i >= 0; i--) {
+                solution[i] = augmented[i][n];
+                for (let k = i + 1; k < n; k++) {
+                    solution[i] -= augmented[i][k] * solution[k];
+                }
+                solution[i] /= augmented[i][i];
+            }
+            
+            return solution;
+        }
+    </script>
+</body>
+</html>
