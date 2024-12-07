@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ретроградный Меркурий</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 8px 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+    }
+
+    #info {
+      margin-top: 10px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <button onclick="toggleAnimation()">Старт/Стоп</button>
+    <button onclick="reset()">Сброс</button>
+  </div>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <div id="info">Серая линия показывает видимое положение Меркурия с Земли</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let isAnimating = false;
+    let time = 0;
+    let speed = 0.5;
+
+    const sun = {X: canvas.width / 2, Y: canvas.height / 2};
+    const mercury = {orbit: 100, period: 88, trail: []};
+    const earth = {orbit: 200, period: 365, trail: []};
+
+    const mercuryTrail = [];
+    const apparentTrail = [];
+    const maxTrailLength = 1000;
+
+    function drawSun() {
+      ctx.beginPath();
+      ctx.arc(sun.X, sun.Y, 20, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFD700';
+      ctx.fill();
+    }
+
+    function getOrbitalPosition(radius, period, t) {
+      const angle = (t / period) * Math.PI * 2;
+      return {
+        x: radius * Math.cos(angle),
+        y: radius * Math.sin(angle)
+      };
+    }
+
+    function drawPlanet(x, y, color, size) {
+      ctx.beginPath();
+      ctx.arc(sun.X + x, sun.Y + y, size, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function drawOrbit(radius) {
+      ctx.beginPath();
+      ctx.arc(sun.X, sun.Y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = '#666';
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawTrail(trail, color) {
+      if (trail.length < 2) return;
+
+      ctx.beginPath();
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for (let i = 1; i < trail.length; i++) {
+        ctx.lineTo(trail[i].x, trail[i].y);
+      }
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawOrbit(earth.orbit);
+      drawOrbit(mercury.orbit);
+
+      const m = getOrbitalPosition(mercury.orbit, mercury.period, time);
+      const e = getOrbitalPosition(earth.orbit, earth.period, time);
+
+      drawSun();
+      drawPlanet(m.x, m.y, '#A0A0A0', 8);
+      drawPlanet(e.x, e.y, '#4169E1', 12);
+
+      const angle = Math.atan2(m.y - e.y, m.x - e.x);
+      const apparentX = sun.X + e.x + Math.cos(angle) * 300;
+      const apparentY = sun.Y + e.y + Math.sin(angle) * 300;
+
+      mercuryTrail.push({x: sun.X + m.x, y: sun.Y + m.y});
+      apparentTrail.push({x: apparentX, y: apparentY});
+
+      if (mercuryTrail.length > maxTrailLength) {
+        mercuryTrail.shift();
+        apparentTrail.shift();
+      }
+
+      drawTrail(mercuryTrail, '#A0A0A0');
+      drawTrail(apparentTrail, '#666');
+
+      ctx.beginPath();
+      ctx.moveTo(sun.X + e.x, sun.Y + e.y);
+      ctx.lineTo(apparentX, apparentY);
+      ctx.strokeStyle = '#666';
+      ctx.setLineDash([2, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (isAnimating) {
+        time += speed;
+        requestAnimationFrame(update);
+      }
+    }
+
+    function toggleAnimation() {
+      isAnimating = !isAnimating;
+      if (isAnimating) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    function reset() {
+      time = 0;
+      mercuryTrail.length = 0;
+      apparentTrail.length = 0;
+      update();
+    }
+
+    update();
+  </script>
+</body>
+
+</html>
