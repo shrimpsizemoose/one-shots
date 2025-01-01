@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Vertical Lines</title>
+  <meta name="description" content="genuary vertical lines 2025/1">
+  <meta name="keywords" content="genuary 2025">
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .controls-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .threshold-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    canvas {
+      max-width: 70vw;
+      height: auto;
+      max-height: 35vh;
+      object-fit: contain;
+    }
+
+    .image-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .image-wrapper {
+      text-align: center;
+    }
+
+    .image-title {
+      margin: 10px 0;
+      font-size: 1.2em;
+      color: #333;
+    }
+
+    .loader {
+      display: none;
+      width: 48px;
+      height: 48px;
+      border: 5px solid #FFF;
+      border-bottom-color: #4CAF50;
+      border-radius: 50%;
+      animation: rotation 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes rotation {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="controls-container">
+      <button onclick="document.getElementById('fileInput').click()" id="uploadBtn">Загрузить изображение</button>
+      <div class="threshold-control">
+        <label for="threshold">Порог:</label>
+        <input type="range" id="threshold" min="50" max="400" value="200" oninput="updateThreshold(this.value)">
+        <span id="thresholdValue">200</span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)">
+    </div>
+    <div id="loader" class="loader"></div>
+    <div class="image-container">
+      <div class="image-wrapper">
+        <h2 class="image-title">Оригинальное изображение</h2>
+        <canvas id="originalCanvas"></canvas>
+      </div>
+      <div class="image-wrapper">
+        <h2 class="image-title">Вертикальные линии</h2>
+        <canvas id="processedCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const originalCanvas = document.getElementById('originalCanvas');
+    const processedCanvas = document.getElementById('processedCanvas');
+    const originalCtx = originalCanvas.getContext('2d');
+    const processedCtx = processedCanvas.getContext('2d');
+    const loader = document.getElementById('loader');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    let lastImageSource = null;
+    let currentThreshold = 200;
+
+    function updateThreshold(value) {
+      currentThreshold = parseInt(value);
+      document.getElementById('thresholdValue').textContent = value;
+      if (lastImageSource) {
+        processImage(lastImageSource);
+      }
+    }
+
+    function setLoading(isLoading) {
+      loader.style.display = isLoading ? 'block' : 'none';
+      uploadBtn.disabled = isLoading;
+    }
+
+    function processImage(imageSource) {
+      lastImageSource = imageSource;
+      setLoading(true);
+      const img = new Image();
+
+      img.onload = () => {
+        originalCanvas.width = processedCanvas.width = img.width;
+        originalCanvas.height = processedCanvas.height = img.height;
+
+        originalCtx.drawImage(img, 0, 0);
+        processedCtx.drawImage(img, 0, 0);
+
+        const imageData = processedCtx.getImageData(0, 0, img.width, img.height);
+        const data = imageData.data;
+
+        const kernel = [
+          [-1, 0, 2, 0, -1],
+          [-1, 0, 2, 0, -1],
+          [-1, 0, 2, 0, -1],
+          [-1, 0, 2, 0, -1],
+          [-1, 0, 2, 0, -1]
+        ];
+
+        const kernelSize = kernel.length;
+        const kernelOffset = Math.floor(kernelSize / 2);
+
+        const processed = new Uint8ClampedArray(data.length);
+
+        for (let y = kernelOffset; y < img.height - kernelOffset; y++) {
+          for (let x = kernelOffset; x < img.width - kernelOffset; x++) {
+            let sumR = 0, sumG = 0, sumB = 0;
+
+            for (let ky = -kernelOffset; ky <= kernelOffset; ky++) {
+              for (let kx = -kernelOffset; kx <= kernelOffset; kx++) {
+                const idx = ((y + ky) * img.width + (x + kx)) * 4;
+                const kernelValue = kernel[ky + kernelOffset][kx + kernelOffset];
+                sumR += data[idx] * kernelValue;
+                sumG += data[idx + 1] * kernelValue;
+                sumB += data[idx + 2] * kernelValue;
+              }
+            }
+
+            const outIdx = (y * img.width + x) * 4;
+            const intensity = Math.abs(sumR + sumG + sumB);
+
+            if (intensity > currentThreshold) {
+              processed[outIdx] = data[outIdx];
+              processed[outIdx + 1] = data[outIdx + 1];
+              processed[outIdx + 2] = data[outIdx + 2];
+            } else {
+              processed[outIdx] = 0;
+              processed[outIdx + 1] = 0;
+              processed[outIdx + 2] = 0;
+            }
+            processed[outIdx + 3] = 255;
+          }
+        }
+
+        processedCtx.putImageData(new ImageData(processed, img.width, img.height), 0, 0);
+        setLoading(false);
+      };
+
+      img.src = imageSource;
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => processImage(e.target.result);
+        reader.readAsDataURL(file);
+      }
+    }
+  </script>
+</body>
+
+</html>

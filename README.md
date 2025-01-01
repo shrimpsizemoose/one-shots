@@ -51,3 +51,11 @@
 Визуализация в виде шариков и кружочков о популярном меме.
 
 ![mercury screenshot](./screenshots/mercury.png)
+
+## Вертикальные линии
+
+В тему [genuary2025/1](https://genuary.art/prompts#jan1)
+
+В чём проблема? Взял kernel, уверенно взял картинку за руку и свёртку _херак!_
+
+![vertical kernel screenshot](./screenshots/vertical-kernel.png)
