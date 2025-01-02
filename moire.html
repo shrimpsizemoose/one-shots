@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Layers upon layers upon layers</title>
+  <meta name="description" content="genuary layers upon layers 2025/2">
+  <meta name="keywords" content="genuary 2025">
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      width: 400px;
+      height: 400px;
+      position: relative;
+      margin-bottom: 20px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .color-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .color-toggle input {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    button {
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:hover {
+      background: #555;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.95);
+      background: #222;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .layer-count {
+      font-size: 24px;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: opacity 0.5s ease;
+      will-change: transform, opacity;
+    }
+
+    svg.removing {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    svg circle {
+      transition: opacity 0.5s ease, stroke 0.5s ease;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="svgContainer">
+  </div>
+  <div class="controls">
+    <button id="decreaseBtn" onclick="changeLayers(-1)">-</button>
+    <div class="layer-count" id="layerCount">2</div>
+    <button id="increaseBtn" onclick="changeLayers(1)">+</button>
+  </div>
+  <label class="color-toggle">
+    <input type="checkbox" id="colorToggle" onchange="toggleColors()">
+    Цветной режим
+  </label>
+
+  <script>
+    const container = document.getElementById('svgContainer');
+    const layerCountElement = document.getElementById('layerCount');
+    const decreaseBtn = document.getElementById('decreaseBtn');
+    const increaseBtn = document.getElementById('increaseBtn');
+    const colorToggle = document.getElementById('colorToggle');
+
+    let currentLayers = 2;
+    const MIN_LAYERS = 2;
+    const MAX_LAYERS = 7;
+    let layers = [];
+    let animations = [];
+
+    const layerColors = [
+      '#FF4B4B', // красный
+      '#4B83FF', // синий
+      '#4BFF4B', // зеленый
+      '#FF4BFF', // пурпурный
+      '#FFD700', // золотой
+      '#00CED1', // бирюзовый
+      '#FF8C00'  // оранжевый
+    ];
+
+    function getLayerOpacity(index, totalLayers) {
+      return Math.min(0.9, 0.7 + (index * 0.05));
+    }
+
+    function createLayer(index, isNew = false) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 400 400");
+      if (isNew) {
+        svg.style.opacity = '0';
+      }
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.id = `pattern${index}`;
+      g.setAttribute('data-layer-index', index);
+
+      const subCircles = 12;
+      const center = 200;
+
+      for (let i = 0; i < subCircles; i++) {
+        const radius = (i + 1) * 15;
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", center);
+        circle.setAttribute("cy", center);
+        circle.setAttribute("r", radius);
+        circle.setAttribute("fill", "none");
+        circle.setAttribute("stroke", colorToggle.checked ? layerColors[index] : "black");
+        circle.setAttribute("stroke-width", "1.5");
+        circle.setAttribute("opacity", getLayerOpacity(index, currentLayers));
+        g.appendChild(circle);
+      }
+
+      svg.appendChild(g);
+      container.appendChild(svg);
+
+      if (isNew) {
+        svg.offsetHeight;
+        svg.style.opacity = '1';
+      }
+
+      return svg;
+    }
+
+    function toggleColors() {
+      layers.forEach((layer, index) => {
+        const circles = layer.getElementsByTagName('circle');
+        const color = colorToggle.checked ? layerColors[index] : 'black';
+        for (let circle of circles) {
+          circle.setAttribute("stroke", color);
+        }
+      });
+    }
+
+    function updateLayerOpacities() {
+      layers.forEach((layer, index) => {
+        const circles = layer.getElementsByTagName('circle');
+        for (let circle of circles) {
+          circle.setAttribute("opacity", getLayerOpacity(index, currentLayers));
+        }
+      });
+    }
+
+    function updateLayers(delta) {
+      const oldLayers = [...layers];
+      const oldAnimations = [...animations];
+
+      if (delta > 0) {
+        const newLayer = createLayer(layers.length, true);
+        layers.push(newLayer);
+        animations.push({
+          angle: Math.random() * 360,
+          speed: 0.2 + (Math.random() * 0.3 - 0.15),
+          offsetSpeed: 0.05 + (Math.random() * 0.02 - 0.01)
+        });
+      } else {
+        const lastLayer = layers[layers.length - 1];
+        lastLayer.classList.add('removing');
+        setTimeout(() => {
+          lastLayer.remove();
+        }, 500);
+        layers.pop();
+        animations.pop();
+      }
+
+      updateLayerOpacities();
+
+      decreaseBtn.disabled = currentLayers <= MIN_LAYERS;
+      increaseBtn.disabled = currentLayers >= MAX_LAYERS;
+      layerCountElement.textContent = currentLayers;
+    }
+
+    function changeLayers(delta) {
+      const newValue = currentLayers + delta;
+      if (newValue >= MIN_LAYERS && newValue <= MAX_LAYERS) {
+        currentLayers = newValue;
+        updateLayers(delta);
+      }
+    }
+
+    function animate() {
+      layers.forEach((layer, index) => {
+        const anim = animations[index];
+        anim.angle += anim.speed;
+
+        const offset = Math.sin(anim.angle * anim.offsetSpeed) * 20;
+        layer.style.transform = `
+                    rotate(${anim.angle}deg) 
+                    translate(${offset}px, ${offset}px)
+                `;
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    // init
+    for (let i = 0; i < currentLayers; i++) {
+      const layer = createLayer(i);
+      layers.push(layer);
+      animations.push({
+        angle: Math.random() * 360,
+        speed: 0.2 + (Math.random() * 0.3 - 0.15),
+        offsetSpeed: 0.05 + (Math.random() * 0.02 - 0.01)
+      });
+    }
+    animate();
+  </script>
+</body>
+
+</html>

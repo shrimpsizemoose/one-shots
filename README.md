@@ -59,3 +59,11 @@
 В чём проблема? Взял kernel, уверенно взял картинку за руку и свёртку _херак!_
 
 ![vertical kernel screenshot](./screenshots/vertical-kernel.png)
+
+## Муары
+
+В тему [genuary2025/2]
+
+Всегда нравились муары, тут можно сделать их самому себе. Довольно залипательно!
+
+![moire screenshot](./screenshots/moire.png)
