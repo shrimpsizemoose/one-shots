@@ -62,8 +62,16 @@
 
 ## Муары
 
-В тему [genuary2025/2]
+В тему [genuary2025/2](https://genuary.art/prompts#jan2)
 
 Всегда нравились муары, тут можно сделать их самому себе. Довольно залипательно!
 
 ![moire screenshot](./screenshots/moire.png)
+
+## Ленточки в 42 строки кода на js
+
+В тему [genuary2025/3](https://genuary.art/prompts#jan3)
+
+Нечитаемый код, но красивое. Получился какой-то логотип дельфийских игр будто бы. Ленточки следуют за мышкой или пальцем
+
+![squiggles screenshot](./screenshots/squiggles.png)

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"><title>exactly 42 lines (not counting html)</title>
+    <meta name="description" content="genuary 42 lines 2025/3">
+    <meta name="keywords" content="genuary 2025">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body{margin:0;overflow:hidden;background:#111}canvas{touch-action:none}</style>
+</head>
+<body><canvas></canvas><script>
+const c = document.querySelector('canvas'), x = c.getContext('2d')
+let mx = my = 300, isActive = 0
+const r = () => (c.width = innerWidth, c.height = innerHeight); r(); onresize = r
+const p = Array(40).fill().map(() => ({
+    x: c.width/2 + (Math.random() - .5) * c.width * .8,
+    y: c.height/2 + (Math.random() - .5) * c.height * .8,
+    vx: 0, vy: 0, trail: [], h: Math.random() * 360
+}))
+const u = e => {
+    let r = c.getBoundingClientRect(); isActive = 1
+    mx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left
+    my = (e.touches ? e.touches[0].clientY : e.clientY) - r.top
+}
+c.onmousedown = u
+c.onmousemove = e => isActive && u(e)
+c.onmouseup = c.onmouseleave = c.ontouchend = () => isActive = 0
+c.ontouchmove = c.ontouchstart = u
+let f = 0;(loop = () => {
+    f++
+    x.fillStyle = '#0001'; x.fillRect(0, 0, c.width, c.height)
+    p.forEach((d, i) => {
+        if (isActive) {
+            let dx = mx - d.x, dy = my - d.y, dist = Math.hypot(dx, dy)
+            d.vx += dx/dist; d.vy += dy/dist
+        }
+        p.forEach((d2, j) => {
+            if (i === j) return
+            let dx = d2.x - d.x, dy = d2.y - d.y, dist = Math.hypot(dx, dy)
+            if (dist < 50) d.vx -= dx/dist, d.vy -= dy/dist
+        })
+        d.vx *= .95; d.vy *= .95; d.x += d.vx; d.y += d.vy
+        d.trail.push({x: d.x, y: d.y})
+        if (d.trail.length > 20) d.trail.shift()
+        x.beginPath()
+        d.trail.forEach((p, i) => x[i?'lineTo':'moveTo'](p.x, p.y))
+        x.strokeStyle = `hsla(${d.h+f/2},100%,50%,${.1+d.trail.length/40})`
+        x.lineWidth = 2; x.stroke()
+        if (d.x < 0 || d.x > c.width) d.vx *= -.8
+        if (d.y < 0 || d.y > c.height) d.vy *= -.8
+    })
+    requestAnimationFrame(loop)
+})()
+</script></body>
+</html>
