@@ -75,3 +75,11 @@
 Нечитаемый код, но красивое. Получился какой-то логотип дельфийских игр будто бы. Ленточки следуют за мышкой или пальцем
 
 ![squiggles screenshot](./screenshots/squiggles.png)
+
+## Чёрные волны на чёрном фоне
+
+В тему [genuary2025/4](https://genuary.art/prompts#jan4)
+
+Если двигать пальцем по экрану влево-вправо или вверх-вниз, то что-то будет меняться.
+
+![black waves screenshot](./screenshots/black-waves.png)

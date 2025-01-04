@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>black on black 🖤</title>
+  <meta name="description" content="genuary black on black 2025/4">
+  <meta name="keywords" content="genuary 2025">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: #1a1a1a;
+    }
+
+    canvas {
+      background: #1a1a1a;
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas></canvas>
+  <script>
+    const canvas = document.querySelector('canvas')
+    const ctx = canvas.getContext('2d')
+
+    let scale = 1
+    let boost = 1
+    let interacting = false
+    let touchPos = {x: 0, y: 0}
+    let fingerprint = {opacity: 0, x: 0, y: 0}
+
+    const wave = {
+      y: 0,
+      waves: [
+        {amplitude: 50, frequency: 0.008, speed: 0.02, phase: 0},
+        {amplitude: 30, frequency: 0.012, speed: 0.015, phase: Math.PI / 3},
+        {amplitude: 20, frequency: 0.02, speed: 0.01, phase: Math.PI / 2}
+      ]
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      wave.y = canvas.height / 2
+    }
+
+    function handleStart(e) {
+      const x = e.touches ? e.touches[0].clientX : e.clientX
+      const y = e.touches ? e.touches[0].clientY : e.clientY
+
+      interacting = true
+      touchPos = {x, y}
+      fingerprint = {opacity: 1, x, y}
+    }
+
+    function handleMove(e) {
+      if (!interacting) return
+
+      const x = e.touches ? e.touches[0].clientX : e.clientX
+      const y = e.touches ? e.touches[0].clientY : e.clientY
+
+      const deltaX = (x - touchPos.x) / canvas.width
+      boost = Math.max(0.2, Math.min(2, boost + deltaX))
+
+      const deltaY = (touchPos.y - y) / canvas.height
+      scale = Math.max(0.2, Math.min(2, scale + deltaY))
+
+      touchPos = {x, y}
+      fingerprint = {opacity: 1, x, y}
+    }
+
+    function handleEnd() {
+      interacting = false
+    }
+
+    // Blergh
+    canvas.addEventListener('mousedown', handleStart)
+    canvas.addEventListener('mousemove', handleMove)
+    canvas.addEventListener('mouseup', handleEnd)
+    canvas.addEventListener('mouseleave', handleEnd)
+    canvas.addEventListener('touchstart', handleStart)
+    canvas.addEventListener('touchmove', handleMove)
+    canvas.addEventListener('touchend', handleEnd)
+
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+
+    function drawFingerprint() {
+      if (fingerprint.opacity <= 0) return
+
+      const gradient = ctx.createRadialGradient(
+        fingerprint.x, fingerprint.y, 0,
+        fingerprint.x, fingerprint.y, 100
+      )
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${fingerprint.opacity * 0.3})`)
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      if (!interacting) {
+        fingerprint.opacity *= 0.9
+      }
+    }
+
+    function drawHint() {
+      ctx.font = '24px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+      ctx.fillText('погладь меня', canvas.width / 2, canvas.height / 3)
+    }
+
+    function animate() {
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      drawHint()
+
+      wave.waves.forEach(w => {
+        w.phase += w.speed * boost
+      })
+
+      for (let offset = 0; offset < 80; offset += 4) {
+        ctx.beginPath()
+        ctx.moveTo(0, wave.y)
+
+        for (let x = 0; x < canvas.width; x += 2) {
+          let y = wave.y
+          wave.waves.forEach(w => {
+            y += Math.sin(x * w.frequency + w.phase + offset * 0.05) *
+              w.amplitude * scale
+          })
+          ctx.lineTo(x, y)
+        }
+
+        ctx.strokeStyle = `rgba(0, 0, 0, ${0.05 + offset / 160})`
+        ctx.lineWidth = 3
+        ctx.stroke()
+      }
+
+      drawFingerprint()
+      requestAnimationFrame(animate)
+    }
+
+    animate()
+  </script>
+</body>
+
+</html>
