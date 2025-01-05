@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Isometric Game of Life</title>
+  <meta name="description" content="genuary isometric no vanishing points 2025/5">
+  <meta name="keywords" content="genuary 2025">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #ffffff;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const cellSize = 20;
+    const gridSize = 25;
+    let speed = 1;
+    let interacting = false;
+    let startY = 0;
+    let fingerprint = {
+      x: 0,
+      y: 0,
+      opacity: 0
+    };
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function createGrid() {
+      let newGrid = [];
+      for (let y = 0; y < gridSize; y++) {
+        newGrid[y] = [];
+        for (let x = 0; x < gridSize; x++) {
+          newGrid[y][x] = Math.random() < 0.3 ? 1 : 0;
+        }
+      }
+      return newGrid;
+    }
+
+    function toIso(x, y) {
+      return {
+        x: (x - y) * cellSize,
+        y: (x + y) * (cellSize / 2)
+      };
+    }
+
+    function drawCell(x, y, isAlive, isNewborn) {
+      const iso = toIso(x, y);
+      const offsetX = canvas.width / 2;
+      const offsetY = canvas.height / 4;
+
+      if (isAlive) {
+        const baseColor = isNewborn ? '#22c55e' : '#000000';
+        const darkColor = isNewborn ? '#15803d' : '#000000';
+
+        // top
+        ctx.beginPath();
+        ctx.moveTo(offsetX + iso.x, offsetY + iso.y);
+        ctx.lineTo(offsetX + iso.x + cellSize, offsetY + iso.y + cellSize / 2);
+        ctx.lineTo(offsetX + iso.x, offsetY + iso.y + cellSize);
+        ctx.lineTo(offsetX + iso.x - cellSize, offsetY + iso.y + cellSize / 2);
+        ctx.closePath();
+        ctx.fillStyle = baseColor;
+        ctx.fill();
+
+        // left
+        ctx.beginPath();
+        ctx.moveTo(offsetX + iso.x - cellSize, offsetY + iso.y + cellSize / 2);
+        ctx.lineTo(offsetX + iso.x, offsetY + iso.y + cellSize);
+        ctx.lineTo(offsetX + iso.x, offsetY + iso.y + cellSize + cellSize / 2);
+        ctx.lineTo(offsetX + iso.x - cellSize, offsetY + iso.y + cellSize);
+        ctx.closePath();
+        ctx.fillStyle = darkColor;
+        ctx.fill();
+
+        // right
+        ctx.beginPath();
+        ctx.moveTo(offsetX + iso.x, offsetY + iso.y + cellSize);
+        ctx.lineTo(offsetX + iso.x + cellSize, offsetY + iso.y + cellSize / 2);
+        ctx.lineTo(offsetX + iso.x + cellSize, offsetY + iso.y + cellSize);
+        ctx.lineTo(offsetX + iso.x, offsetY + iso.y + cellSize + cellSize / 2);
+        ctx.closePath();
+        ctx.fillStyle = darkColor;
+        ctx.fill();
+      }
+    }
+
+    function nbors(x, y) {
+      let count = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          let nx = ((x + dx) + gridSize) % gridSize;
+          let ny = ((y + dy) + gridSize) % gridSize;
+          count += grid[ny][nx];
+        }
+      }
+      return count;
+    }
+
+    function update() {
+      previousGrid = grid.map(row => [...row]);
+      let newGrid = grid.map(row => [...row]);
+
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          let neighbors = nbors(x, y);
+          if (grid[y][x] === 1) {
+            newGrid[y][x] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+          } else {
+            newGrid[y][x] = neighbors === 3 ? 1 : 0;
+          }
+        }
+      }
+      grid = newGrid;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y <= gridSize; y++) {
+        for (let x = 0; x <= gridSize; x++) {
+          const iso = toIso(x, y);
+          const offsetX = canvas.width / 2;
+          const offsetY = canvas.height / 4;
+
+          if (y < gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX + iso.x - cellSize, offsetY + iso.y + cellSize / 2);
+            ctx.lineTo(offsetX + iso.x, offsetY + iso.y + cellSize);
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+
+          if (x < gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(offsetX + iso.x, offsetY + iso.y + cellSize);
+            ctx.lineTo(offsetX + iso.x + cellSize, offsetY + iso.y + cellSize / 2);
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (let sum = 0; sum <= (gridSize * 2) - 2; sum++) {
+        for (let x = 0; x <= sum; x++) {
+          const y = sum - x;
+          if (x < gridSize && y < gridSize && y >= 0) {
+            if (grid[y][x] === 1) {
+              const isNewborn = previousGrid[y][x] === 0;
+              drawCell(x + 0.5, y + 0.5, true, isNewborn);
+            }
+          }
+        }
+      }
+    }
+
+    function drawHint() {
+      ctx.font = "32px 'Press Start 2P'";
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.fillText(`SPEED = ${speed.toFixed(1)}`, canvas.width / 2 - 30, 120);
+
+      drawFingerprint();
+    }
+
+    function drawFingerprint() {
+      if (fingerprint.opacity <= 0) return;
+      const gradient = ctx.createRadialGradient(
+        fingerprint.x, fingerprint.y, 0,
+        fingerprint.x, fingerprint.y, 100
+      );
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${fingerprint.opacity * 0.3})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!interacting) {
+        fingerprint.opacity *= 0.9;
+      }
+    }
+
+    function handleStart(e) {
+      interacting = true;
+      const touch = e.touches ? e.touches[0] : e;
+      startY = touch.clientY;
+      fingerprint.x = touch.clientX;
+      fingerprint.y = touch.clientY;
+      fingerprint.opacity = 1;
+    }
+
+    function handleMove(e) {
+      if (!interacting) return;
+      const touch = e.touches ? e.touches[0] : e;
+      fingerprint.x = touch.clientX;
+      fingerprint.y = touch.clientY;
+
+      const deltaY = startY - touch.clientY;
+      speed = Math.max(0.1, speed + deltaY * 0.01);
+      startY = touch.clientY;
+    }
+
+    function handleEnd() {
+      interacting = false;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart);
+    canvas.addEventListener('touchmove', handleMove);
+    canvas.addEventListener('touchend', handleEnd);
+
+    function gameLoop() {
+      update();
+      draw();
+      drawHint();
+      setTimeout(gameLoop, 500 / speed);
+    }
+
+    grid = createGrid();
+    previousGrid = grid.map(row => [...row]);
+    gameLoop();
+  </script>
+</body>
+
+</html>
