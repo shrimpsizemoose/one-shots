@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Primitive Landscape</title>
+  <meta charset="utf-8">
+  <meta name="description" content="genuary 42 lines 2025/6">
+  <meta name="keywords" content="genuary 2025">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="landscape"></canvas>
+  <script>
+    const canvas = document.getElementById('landscape');
+    const ctx = canvas.getContext('2d');
+    let time = 0.3;
+    let celestialHeight = 0.3;
+    let interacting = false;
+    let startY = 0;
+    let fingerprint = {
+      x: 0,
+      y: 0,
+      opacity: 0
+    };
+
+    let mountainPoints = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      generateMountainPoints();
+    }
+
+    function generateMountainPoints() {
+      mountainPoints = [
+        {x: 0, y: canvas.height * 0.6},
+        {x: canvas.width * 0.2, y: canvas.height * 0.4},
+        {x: canvas.width * 0.4, y: canvas.height * 0.65},
+        {x: canvas.width * 0.6, y: canvas.height * 0.35},
+        {x: canvas.width * 0.8, y: canvas.height * 0.5},
+        {x: canvas.width, y: canvas.height * 0.45}
+      ];
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function lerp(start, end, t) {
+      return start * (1 - t) + end * t;
+    }
+
+    function getTimeColors() {
+      const colors = {
+        sky: {
+          night: '#1a1a2e',
+          dawn: '#ff9a9e',
+          day: '#87CEEB',
+          dusk: '#355C7D'
+        },
+        mountain: {
+          night: '#2d3436',
+          dawn: '#6c5b7b',
+          day: '#808080',
+          dusk: '#4b6584'
+        },
+        ground: {
+          night: '#1e272e',
+          dawn: '#c06c84',
+          day: '#3B7302',
+          dusk: '#3c6382'
+        }
+      };
+
+      let t = time;
+      let period;
+      let colors1, colors2, factor;
+
+      if (t < 0.25) {
+        period = t / 0.25;
+        colors1 = {sky: colors.sky.night, mountain: colors.mountain.night, ground: colors.ground.night};
+        colors2 = {sky: colors.sky.dawn, mountain: colors.mountain.dawn, ground: colors.ground.dawn};
+        factor = period;
+      } else if (t < 0.5) {
+        period = (t - 0.25) / 0.25;
+        colors1 = {sky: colors.sky.dawn, mountain: colors.mountain.dawn, ground: colors.ground.dawn};
+        colors2 = {sky: colors.sky.day, mountain: colors.mountain.day, ground: colors.ground.day};
+        factor = period;
+      } else if (t < 0.75) {
+        period = (t - 0.5) / 0.25;
+        colors1 = {sky: colors.sky.day, mountain: colors.mountain.day, ground: colors.ground.day};
+        colors2 = {sky: colors.sky.dusk, mountain: colors.mountain.dusk, ground: colors.ground.dusk};
+        factor = period;
+      } else {
+        period = (t - 0.75) / 0.25;
+        colors1 = {sky: colors.sky.dusk, mountain: colors.mountain.dusk, ground: colors.ground.dusk};
+        colors2 = {sky: colors.sky.night, mountain: colors.mountain.night, ground: colors.ground.night};
+        factor = period;
+      }
+
+      return {
+        sky: lerpColor(colors1.sky, colors2.sky, factor),
+        mountain: lerpColor(colors1.mountain, colors2.mountain, factor),
+        ground: lerpColor(colors1.ground, colors2.ground, factor)
+      };
+    }
+
+    function lerpColor(color1, color2, factor) {
+      const r1 = parseInt(color1.substr(1, 2), 16);
+      const g1 = parseInt(color1.substr(3, 2), 16);
+      const b1 = parseInt(color1.substr(5, 2), 16);
+
+      const r2 = parseInt(color2.substr(1, 2), 16);
+      const g2 = parseInt(color2.substr(3, 2), 16);
+      const b2 = parseInt(color2.substr(5, 2), 16);
+
+      const r = Math.round(lerp(r1, r2, factor));
+      const g = Math.round(lerp(g1, g2, factor));
+      const b = Math.round(lerp(b1, b2, factor));
+
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function isSunVisible(x, y) {
+      for (let i = 0; i < mountainPoints.length - 1; i++) {
+        if (x >= mountainPoints[i].x && x <= mountainPoints[i + 1].x) {
+          const t = (x - mountainPoints[i].x) / (mountainPoints[i + 1].x - mountainPoints[i].x);
+          const mountainHeight = lerp(mountainPoints[i].y, mountainPoints[i + 1].y, t);
+          return y < mountainHeight;
+        }
+      }
+      return true;
+    }
+
+    function drawCelestial() {
+      const celestialRadius = canvas.width * 0.05;
+      const x = canvas.width * (-0.1 + time * 1.2);
+      const y = canvas.height * celestialHeight;
+      const sunVisible = isSunVisible(x, y);
+
+      if (time > 0.25 && time < 0.75) {
+        // sun
+        if (sunVisible) {
+          ctx.fillStyle = '#FDB813';
+          ctx.beginPath();
+          ctx.arc(x, y, celestialRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // moon
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(x, y, celestialRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawMountains() {
+      const colors = getTimeColors();
+      const x = canvas.width * (0.2 + time * 0.6);
+      const y = canvas.height * celestialHeight;
+      const sunVisible = isSunVisible(x, y);
+      const isDaytime = time > 0.25 && time < 0.75;
+
+      ctx.fillStyle = colors.mountain;
+      ctx.beginPath();
+      ctx.moveTo(mountainPoints[0].x, mountainPoints[0].y);
+
+      for (let i = 1; i < mountainPoints.length; i++) {
+        ctx.lineTo(mountainPoints[i].x, mountainPoints[i].y);
+      }
+
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+
+      // edge glow
+      if (isDaytime && !sunVisible) {
+        ctx.beginPath();
+        ctx.moveTo(mountainPoints[0].x, mountainPoints[0].y);
+
+        for (let i = 1; i < mountainPoints.length; i++) {
+          ctx.lineTo(mountainPoints[i].x, mountainPoints[i].y);
+        }
+
+        ctx.strokeStyle = 'rgba(253, 184, 19, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+    }
+
+    function drawGround() {
+      const colors = getTimeColors();
+
+      ctx.fillStyle = colors.ground;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height * 0.7);
+      ctx.lineTo(canvas.width * 0.3, canvas.height * 0.75);
+      ctx.lineTo(canvas.width * 0.7, canvas.height * 0.72);
+      ctx.lineTo(canvas.width, canvas.height * 0.7);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawRoad() {
+      const groundY = canvas.height * 0.72;
+
+      ctx.beginPath();
+      ctx.moveTo(canvas.width * 0.7, groundY);
+      ctx.quadraticCurveTo(
+        canvas.width * 0.85,
+        groundY + canvas.height * 0.1,
+        canvas.width,
+        groundY + canvas.height * 0.15
+      );
+
+      ctx.lineTo(canvas.width, groundY + canvas.height * 0.18);
+      ctx.quadraticCurveTo(
+        canvas.width * 0.85,
+        groundY + canvas.height * 0.13,
+        canvas.width * 0.7,
+        groundY + canvas.height * 0.02
+      );
+
+      ctx.fillStyle = '#8B4513';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(canvas.width * 0.7, groundY + canvas.height * 0.01);
+      ctx.quadraticCurveTo(
+        canvas.width * 0.85,
+        groundY + canvas.height * 0.115,
+        canvas.width,
+        groundY + canvas.height * 0.165
+      );
+      ctx.strokeStyle = '#654321';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    function drawHouses() {
+      const house1Width = canvas.width * 0.08;
+      const house1Height = canvas.height * 0.12;
+      const x1 = canvas.width * 0.75;
+      const groundY = canvas.height * 0.72;
+
+      drawHouse(x1, groundY, house1Width, house1Height, '#8B575C', '#6B4145'); // Muted red
+
+      const house2Width = canvas.width * 0.1;
+      const house2Height = canvas.height * 0.09;
+      const x2 = canvas.width * 0.62;
+
+      drawHouse(x2, groundY, house2Width, house2Height, '#557A95', '#395B74'); // Blue-gray
+    }
+
+    function drawHouse(x, y, width, height, wallColor, roofColor) {
+      ctx.fillStyle = wallColor;
+      ctx.fillRect(x, y - height, width, height);
+
+      ctx.fillStyle = roofColor;
+      ctx.beginPath();
+      ctx.moveTo(x - width * 0.1, y - height);
+      ctx.lineTo(x + width * 0.5, y - height * 1.3);
+      ctx.lineTo(x + width * 1.1, y - height);
+      ctx.closePath();
+      ctx.fill();
+
+      const isEvening = time > 0.6 && time < 0.8;
+      const windowLight = isEvening ? '#ffd700' : '#1a1a1a';
+
+      ctx.fillStyle = windowLight;
+      const windowSize = width * 0.3;
+      ctx.fillRect(
+        x + (width - windowSize) / 2,
+        y - height * 0.6,
+        windowSize,
+        windowSize
+      );
+    }
+
+    function drawFingerprint() {
+      if (fingerprint.opacity <= 0) return;
+      const gradient = ctx.createRadialGradient(
+        fingerprint.x, fingerprint.y, 0,
+        fingerprint.x, fingerprint.y, 100
+      );
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${fingerprint.opacity * 0.3})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!interacting) {
+        fingerprint.opacity *= 0.9;
+      }
+    }
+
+    function handleStart(e) {
+      interacting = true;
+      const touch = e.touches ? e.touches[0] : e;
+      startY = touch.clientY;
+      fingerprint.x = touch.clientX;
+      fingerprint.y = touch.clientY;
+      fingerprint.opacity = 1;
+      time = touch.clientX / canvas.width;
+      if (time > 1) time = 1;
+      if (time < 0) time = 0;
+    }
+
+    function handleMove(e) {
+      if (!interacting) return;
+      const touch = e.touches ? e.touches[0] : e;
+      fingerprint.x = touch.clientX;
+      fingerprint.y = touch.clientY;
+
+      const deltaY = startY - touch.clientY;
+      celestialHeight = Math.max(0.1, Math.min(0.9, celestialHeight - deltaY * 0.001));
+      time = touch.clientX / canvas.width;
+      if (time > 1) time = 1;
+      if (time < 0) time = 0;
+      startY = touch.clientY;
+    }
+
+    function handleEnd() {
+      interacting = false;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('mouseleave', handleEnd);
+    canvas.addEventListener('touchstart', handleStart);
+    canvas.addEventListener('touchmove', handleMove);
+    canvas.addEventListener('touchend', handleEnd);
+
+    function draw() {
+      const colors = getTimeColors();
+      ctx.fillStyle = colors.sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawCelestial();
+      drawMountains();
+      drawGround();
+      drawRoad();
+      drawHouses();
+      drawFingerprint();
+    }
+
+    function animate() {
+      draw();
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+
+</html>

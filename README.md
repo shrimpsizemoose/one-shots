@@ -93,3 +93,11 @@
 Новые клетки в этой итерации красятся зелёным, а старые &mdash; чёрные.
 
 ![iso life screenshot](./screenshots/iso-life.png)
+
+## Пейзаж из примитивных форм
+
+В тему [genuary2025/6](https://genuary.art/prompts#jan6)
+
+Только примитивные формы, но зато можно подвигать солнышко
+
+![landscape screenshot](./screenshots/landscape.png)
