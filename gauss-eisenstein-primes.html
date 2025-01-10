@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Простые числа Эйзенштейна и Гаусса</title>
+  <style>
+    body {
+      margin: 20px;
+      background: white;
+    }
+
+    canvas {
+      display: block;
+      margin: 20px auto;
+      border: 1px solid #eee;
+    }
+
+    .controls {
+      text-align: center;
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <select id="mode">
+      <option value="both">Рисуй все</option>
+      <option value="gaussian">Только Гауссовы простые числа</option>
+      <option value="eisenstein">Только простые числа Эйзенштейна</option>
+    </select>
+  </div>
+  <canvas id="canvas" width="600" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const mode = document.getElementById('mode');
+
+    const RANGE = 15;
+    const SCALE = 20;
+    const ROOT3 = Math.sqrt(3);
+
+    // Basic prime test
+    function isPrime(n) {
+      if (n < 2) return false;
+      if (n === 2) return true;
+      if (n % 2 === 0) return false;
+      for (let i = 3; i <= Math.sqrt(n); i += 2) {
+        if (n % i === 0) return false;
+      }
+      return true;
+    }
+
+    // Test for Gaussian prime
+    function isGaussianPrime(a, b) {
+      if (a === 0) return isPrime(Math.abs(b)) && Math.abs(b) % 4 === 3;
+      if (b === 0) return isPrime(Math.abs(a)) && Math.abs(a) % 4 === 3;
+      return isPrime(a * a + b * b);
+    }
+
+    // Test for Eisenstein prime
+    function isEisensteinPrime(a, b) {
+      const norm = a * a - a * b + b * b;
+      if (a === 0) return isPrime(Math.abs(b)) && Math.abs(b) % 3 === 2;
+      if (b === 0) return isPrime(Math.abs(a)) && Math.abs(a) % 3 === 2;
+      if (a === b) return false;
+      return isPrime(norm);
+    }
+
+    function drawSquareGrid() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      ctx.strokeStyle = '#eee';
+      ctx.lineWidth = 1;
+
+      for (let i = -RANGE; i <= RANGE; i++) {
+        ctx.beginPath();
+        ctx.moveTo(centerX + i * SCALE, 0);
+        ctx.lineTo(centerX + i * SCALE, canvas.height);
+        ctx.moveTo(0, centerY + i * SCALE);
+        ctx.lineTo(canvas.width, centerY + i * SCALE);
+        ctx.stroke();
+      }
+    }
+
+    function drawHexGrid() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      ctx.strokeStyle = '#f0f0f0';
+      ctx.lineWidth = 1;
+
+      for (let i = -RANGE; i <= RANGE; i++) {
+        for (let j = -RANGE; j <= RANGE; j++) {
+          const x = centerX + (i - j / 2) * SCALE;
+          const y = centerY - j * SCALE * ROOT3 / 2;
+
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + SCALE, y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + SCALE / 2, y - SCALE * ROOT3 / 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function draw() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      // Clear canvas
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (mode.value !== 'eisenstein') drawSquareGrid();
+      else drawHexGrid();
+
+      // Draw axes
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(centerX, 0);
+      ctx.lineTo(centerX, canvas.height);
+      ctx.moveTo(0, centerY);
+      ctx.lineTo(canvas.width, centerY);
+      ctx.stroke();
+
+      for (let x = -RANGE; x <= RANGE; x++) {
+        for (let y = -RANGE; y <= RANGE; y++) {
+          if (mode.value !== 'eisenstein' && isGaussianPrime(x, y)) {
+            ctx.fillStyle = 'rgba(68, 170, 68, 0.7)';
+            ctx.beginPath();
+            ctx.arc(
+              centerX + x * SCALE,
+              centerY - y * SCALE,
+              4, 0, Math.PI * 2
+            );
+            ctx.fill();
+          }
+
+          if (mode.value !== 'gaussian' && isEisensteinPrime(x, y)) {
+            ctx.fillStyle = 'rgba(170, 68, 170, 0.7)';
+            ctx.beginPath();
+            const ex = centerX + (x - y / 2) * SCALE;
+            const ey = centerY - y * SCALE * ROOT3 / 2;
+            ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    mode.addEventListener('change', draw);
+    draw();
+  </script>
+</body>
+
+</html>
