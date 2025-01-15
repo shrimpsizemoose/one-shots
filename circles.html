@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="genuary 42 lines 2025/14">
+  <meta name="keywords" content="genuary 2025">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chaos Circles ⚪⚫</title>
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let circles = [];
+    let time = 0;
+    const CIRCLE_COUNT = 100;
+    const NOISE_SCALE = 0.001;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function pseudoPerlinNoise(x, y) {
+      return Math.sin(x * 1.2 + Math.cos(y * 0.8)) *
+        Math.cos(y * 0.9 + Math.sin(x * 1.1)) *
+        Math.sin((x + y) * 0.7);
+    }
+
+    function initCircles() {
+      circles = [];
+      for (let i = 0; i < CIRCLE_COUNT; i++) {
+        circles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: 15 + Math.random() * 15,
+          isWhite: Math.random() > 0.5,
+          motion: Array(3).fill().map(() => ({
+            speed: Math.random() * 2 - 1,
+            angle: Math.random() * Math.PI * 2,
+            scale: 50 + Math.random() * 100
+          })),
+          targetAngle: (i / CIRCLE_COUNT) * Math.PI * 2
+        });
+      }
+    }
+
+    function getPatternPosition(circle, pattern, t) {
+      const radius = Math.min(canvas.width, canvas.height) * 0.3;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const progress = circle.targetAngle / (Math.PI * 2);
+
+      switch (pattern) {
+        case 'spiral':
+          const spiralRadius = radius * (1 - progress * 0.8);
+          const spiralAngle = circle.targetAngle * 3;
+          return {
+            x: centerX + Math.cos(spiralAngle) * spiralRadius,
+            y: centerY + Math.sin(spiralAngle) * spiralRadius
+          };
+        case 'star':
+          const points = 5;
+          const innerRadius = radius * 0.4;
+          const angle = circle.targetAngle;
+          const pointAngle = Math.floor(progress * points * 2) * Math.PI / points;
+          const useInner = (progress * points * 2) % 1 > 0.5;
+          const starRadius = useInner ? innerRadius : radius;
+          return {
+            x: centerX + Math.cos(pointAngle) * starRadius,
+            y: centerY + Math.sin(pointAngle) * starRadius
+          };
+        case 'circle':
+          return {
+            x: centerX + Math.cos(circle.targetAngle) * radius,
+            y: centerY + Math.sin(circle.targetAngle) * radius
+          };
+        case 'square':
+          const side = radius * 2;
+          if (progress < 0.25) {
+            return {
+              x: centerX - radius + progress * 4 * side,
+              y: centerY - radius
+            };
+          } else if (progress < 0.5) {
+            return {
+              x: centerX + radius,
+              y: centerY - radius + (progress - 0.25) * 4 * side
+            };
+          } else if (progress < 0.75) {
+            return {
+              x: centerX + radius - (progress - 0.5) * 4 * side,
+              y: centerY + radius
+            };
+          } else {
+            return {
+              x: centerX - radius,
+              y: centerY + radius - (progress - 0.75) * 4 * side
+            };
+          }
+        default:
+          return {x: circle.x, y: circle.y};
+      }
+    }
+
+    function updateCircle(circle) {
+      let dx = 0, dy = 0;
+      circle.motion.forEach(m => {
+        dx += Math.cos(m.angle + time * m.speed * 0.3) * m.scale;
+        dy += Math.sin(m.angle + time * m.speed * 0.3) * m.scale;
+      });
+
+      const noiseX = pseudoPerlinNoise(circle.x * NOISE_SCALE + time * 0.3, circle.y * NOISE_SCALE);
+      const noiseY = pseudoPerlinNoise(circle.y * NOISE_SCALE - time * 0.3, circle.x * NOISE_SCALE);
+      dx += noiseX;
+      dy += noiseY;
+
+      const patternInterval = 20;
+      const transitionDuration = 3;
+      const patternTime = time % patternInterval;
+
+      if (patternTime < transitionDuration) {
+        const t = (1 - Math.cos(patternTime / transitionDuration * Math.PI)) / 2;
+        const pattern = ['star', 'circle', 'square', 'spiral'][Math.floor(time / patternInterval) % 4];
+        const target = getPatternPosition(circle, pattern, t);
+
+        circle.x = circle.x * (1 - t) + target.x * t;
+        circle.y = circle.y * (1 - t) + target.y * t;
+      } else if (patternTime < transitionDuration) {
+        const t = (1 - Math.cos((patternTime - transitionDuration) / transitionDuration * Math.PI)) / 2;
+        const naturalX = circle.x + dx;
+        const naturalY = circle.y + dy;
+
+        circle.x = circle.x * (1 - t) + naturalX * t;
+        circle.y = circle.y * (1 - t) + naturalY * t;
+      } else {
+        circle.x += dx * 0.01;
+        circle.y += dy * 0.01;
+      }
+
+      circle.x = ((circle.x % canvas.width) + canvas.width) % canvas.width;
+      circle.y = ((circle.y % canvas.height) + canvas.height) % canvas.height;
+    }
+
+    function draw() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      circles.forEach(circle => {
+        updateCircle(circle);
+
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+
+        if (!circle.isWhite) {
+          ctx.fillStyle = 'black';
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = 'white';
+          ctx.fill();
+        }
+      });
+
+      time += 0.01;
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initCircles();
+    });
+
+    resizeCanvas();
+    initCircles();
+    draw();
+
+    canvas.addEventListener('click', () => {
+      circles.forEach(circle => {
+        circle.motion = Array(3).fill().map(() => ({
+          speed: Math.random() * 2 - 1,
+          angle: Math.random() * Math.PI * 2,
+          scale: 50 + Math.random() * 100
+        }));
+      });
+    });
+  </script>
+</body>
+
+</html>

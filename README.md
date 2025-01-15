@@ -112,3 +112,11 @@
 Anyway, можно посмотреть на одно, можно на сразу оба
 
 ![gauss eisenstein primes screenshot](./screenshots/gauss-eisenstein-primes.png)
+
+## Кружочки, формирующиеся в фигуры
+
+Вдохновлялся тут задачкой из AdventOfCode 2024 где надо было найти ёлочку. Memo to self: шум перлина не то чтобы сильно даёт в движении частиц в подобных визуализациях. 
+
+В тему [genuary2025/14](https://genuary.art/prompts#jan14) &mdash; никаких серостей, только белое и чёрное. Клик меняет немного направление движения всех частиц.
+
+![chaotic circles screenshot](./screenshots/circles.png)
