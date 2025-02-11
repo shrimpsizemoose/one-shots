@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Простая экосистема 🥬🐑</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: white;
+      border: 1px solid #ccc;
+    }
+
+    .controls {
+      min-width: 300px;
+    }
+
+    .control-section {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .control-group {
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .control-item {
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="number"] {
+      width: 60px;
+    }
+
+    button {
+      margin: 5px 0;
+      padding: 5px 10px;
+    }
+
+    .population-stats {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .stat-item {
+      margin: 5px 0;
+      padding: 5px;
+      border-radius: 3px;
+    }
+
+    label {
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="controls">
+    <div>
+      <button id="addPopulation">Добавить популяцию</button>
+      <button id="reset">Сбросить симуляцию</button>
+    </div>
+    <div class="control-section">
+      <div class="control-group">
+        <label>Настройки травы:</label>
+        <div class="control-item">
+          <label>Шанс восстановления (%):</label>
+          <input type="number" id="grassRegrowth" value="5" min="1" max="100" step="1">
+        </div>
+        <div class="control-item">
+          <label>Энергия травы:</label>
+          <input type="number" id="grassEnergy" value="5" min="1" max="20">
+        </div>
+      </div>
+    </div>
+    <div id="populationControls" class="control-section"></div>
+    <div id="populationStats" class="population-stats"></div>
+  </div>
+  <canvas id="canvas" width="600" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const COLORS = {
+      WHITE: '#FFFFFF',
+      PINK: '#FFC0CB',
+      PURPLE: '#6600CC',
+      ORANGE: '#FFA500',
+      CYAN: '#00FFFF',
+      GREEN: '#006600',
+      BROWN: '#663300'
+    };
+
+    const POPULATION_COLORS = [
+      COLORS.WHITE, COLORS.PINK, COLORS.PURPLE,
+      COLORS.ORANGE, COLORS.CYAN
+    ];
+
+    const PATCH_SIZE = 10;
+    const GRID_SIZE = Math.floor(canvas.width / PATCH_SIZE);
+
+    let globalSettings = {
+      grassRegrowthChance: 0.05,
+      grassEnergy: 5
+    };
+
+    class Population {
+      constructor(id, color, initialCount, breedEnergy = 50) {
+        this.id = id;
+        this.color = color;
+        this.sheep = [];
+        this.initialCount = initialCount;
+        this.breedEnergy = breedEnergy;
+        this.initialize();
+      }
+
+      initialize() {
+        this.sheep = [];
+        for (let i = 0; i < this.initialCount; i++) {
+          this.sheep.push(new Sheep(undefined, undefined, this.color, this.breedEnergy));
+        }
+      }
+
+      update() {
+        for (let i = this.sheep.length - 1; i >= 0; i--) {
+          if (!this.sheep[i].update()) {
+            this.sheep.splice(i, 1);
+          }
+        }
+      }
+
+      getStats() {
+        return {
+          count: this.sheep.length,
+          avgEnergy: Math.round(
+            this.sheep.reduce((sum, sheep) => sum + sheep.energy, 0) /
+            (this.sheep.length || 1)
+          )
+        };
+      }
+    }
+
+    class Grass {
+      constructor(x, y) {
+        this.x = x * PATCH_SIZE;
+        this.y = y * PATCH_SIZE;
+        this.gridX = x;
+        this.gridY = y;
+        this.energy = globalSettings.grassEnergy;
+        this.eaten = false;
+      }
+
+      update() {
+        if (this.eaten && Math.random() < globalSettings.grassRegrowthChance) {
+          this.eaten = false;
+          this.energy = globalSettings.grassEnergy;
+        }
+
+        ctx.fillStyle = this.eaten ? COLORS.BROWN : COLORS.GREEN;
+        ctx.fillRect(this.x, this.y, PATCH_SIZE, PATCH_SIZE);
+      }
+    }
+
+    class Sheep {
+      constructor(x, y, color, breedEnergy) {
+        this.gridX = x !== undefined ? x : Math.floor(Math.random() * GRID_SIZE);
+        this.gridY = y !== undefined ? y : Math.floor(Math.random() * GRID_SIZE);
+        this.energy = 20;
+        this.color = color;
+        this.age = 100;
+        this.breedEnergy = breedEnergy;
+      }
+
+      update() {
+        this.age--;
+        if (this.age <= 0 || this.energy <= 0) {
+          return false;
+        }
+
+        this.energy--;
+
+        if (this.energy >= this.breedEnergy) {
+          this.energy -= Math.floor(this.breedEnergy * 0.6);
+          const newSheep = new Sheep(this.gridX, this.gridY, this.color, this.breedEnergy);
+          populations.find(p => p.color === this.color).sheep.push(newSheep);
+        }
+
+        const moveX = Math.floor(Math.random() * 3) - 1;
+        const moveY = Math.floor(Math.random() * 3) - 1;
+
+        this.gridX = (this.gridX + moveX + GRID_SIZE) % GRID_SIZE;
+        this.gridY = (this.gridY + moveY + GRID_SIZE) % GRID_SIZE;
+
+        const grassIndex = this.gridX * GRID_SIZE + this.gridY;
+        const grass = grassList[grassIndex];
+
+        if (grass && !grass.eaten) {
+          this.energy += grass.energy;
+          grass.eaten = true;
+        }
+
+        ctx.fillStyle = this.color;
+        ctx.fillRect(
+          this.gridX * PATCH_SIZE,
+          this.gridY * PATCH_SIZE,
+          PATCH_SIZE,
+          PATCH_SIZE
+        );
+
+        return true;
+      }
+    }
+
+    let populations = [];
+    const grassList = [];
+    let animationId = null;
+
+    function initializeGrass() {
+      grassList.length = 0;
+      for (let x = 0; x < GRID_SIZE; x++) {
+        for (let y = 0; y < GRID_SIZE; y++) {
+          grassList.push(new Grass(x, y));
+        }
+      }
+    }
+
+    function resetSimulation() {
+      const grassRegrowth = document.getElementById('grassRegrowth');
+      const grassEnergy = document.getElementById('grassEnergy');
+
+      globalSettings.grassRegrowthChance = parseInt(grassRegrowth.value) / 100;
+      globalSettings.grassEnergy = parseInt(grassEnergy.value);
+
+      cancelAnimationFrame(animationId);
+      initializeGrass();
+      populations.forEach(pop => pop.initialize());
+      animate();
+    }
+
+    function updateStats() {
+      const statsDiv = document.getElementById('populationStats');
+      statsDiv.innerHTML = populations.map(pop => {
+        const stats = pop.getStats();
+        return `
+          <div class="stat-item" style="background: ${pop.color}20;">
+              Популяция ${pop.id + 1}: 
+              ${stats.count} овец, 
+              ср. энергия: ${stats.avgEnergy}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addPopulation() {
+      if (populations.length >= POPULATION_COLORS.length) {
+        alert('Достигнуто максимальное количество популяций!');
+        return;
+      }
+
+      const id = populations.length;
+      const color = POPULATION_COLORS[id];
+
+      const controls = document.getElementById('populationControls');
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div class="control-group" style="background: ${color}20;">
+            <label>Популяция ${id + 1}:</label>
+            <div class="control-item">
+                <label>Количество овец:</label>
+                <input type="number" id="pop${id}Count" value="20" min="1" max="100">
+            </div>
+            <div class="control-item">
+                <label>Энергия для размножения:</label>
+                <input type="number" id="pop${id}Breed" value="50" min="10" max="200">
+            </div>
+            <button onclick="updatePopulation(${id})">Обновить</button>
+        </div>
+      `;
+      controls.appendChild(div);
+
+      const population = new Population(id, color, 20, 50);
+      populations.push(population);
+
+      if (!animationId) {
+        animate();
+      }
+    }
+
+    function updatePopulation(id) {
+      const countInput = document.getElementById(`pop${id}Count`);
+      const breedInput = document.getElementById(`pop${id}Breed`);
+
+      const count = parseInt(countInput.value) || 20;
+      const breedEnergy = parseInt(breedInput.value) || 50;
+
+      populations[id].initialCount = count;
+      populations[id].breedEnergy = breedEnergy;
+      resetSimulation();
+    }
+
+    function animate() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      grassList.forEach(grass => grass.update());
+      populations.forEach(pop => pop.update());
+      updateStats();
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    initializeGrass();
+    document.getElementById('addPopulation').onclick = addPopulation;
+    document.getElementById('reset').onclick = resetSimulation;
+
+    addPopulation();
+  </script>
+</body>
+
+</html>
