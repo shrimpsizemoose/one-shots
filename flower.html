@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Визуализация цветка 🌺</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f5f5f5;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #canvas-container {
+      position: relative;
+      width: 100%;
+      height: 80vh;
+      margin-bottom: 10px;
+    }
+
+    canvas {
+      display: block;
+      background-color: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      height: 100%;
+    }
+
+    .controls {
+      width: 90%;
+      max-width: 800px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+      flex-basis: 30%;
+    }
+
+    label {
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    input {
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #shareUrl {
+      margin-top: 10px;
+      padding: 8px;
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .fingerprint {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(76, 175, 80, 0.3);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.5s;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="canvas-container">
+    <canvas id="flowerCanvas"></canvas>
+    <div id="fingerprint" class="fingerprint" style="opacity: 0;"></div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <div class="control-item">
+        <label for="petals">Количество лепестков:</label>
+        <input type="number" id="petals" min="3" max="20" value="8">
+      </div>
+      <div class="control-item">
+        <label for="petalColor">Цвет лепестков:</label>
+        <input type="color" id="petalColor" value="#FF69B4">
+      </div>
+      <div class="control-item">
+        <label for="petalSize">Размер лепестков:</label>
+        <input type="range" id="petalSize" min="20" max="100" value="60">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-item">
+        <label for="centerSize">Размер центра:</label>
+        <input type="range" id="centerSize" min="10" max="50" value="30">
+      </div>
+      <div class="control-item">
+        <label for="centerColor">Цвет центра:</label>
+        <input type="color" id="centerColor" value="#FFA500">
+      </div>
+      <div class="control-item">
+        <label for="stemHeight">Высота стебля:</label>
+        <input type="range" id="stemHeight" min="50" max="300" value="150">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-item">
+        <label for="stemWidth">Ширина стебля:</label>
+        <input type="range" id="stemWidth" min="5" max="20" value="10">
+      </div>
+      <div class="control-item">
+        <label for="stemColor">Цвет стебля:</label>
+        <input type="color" id="stemColor" value="#228B22">
+      </div>
+      <div class="control-item">
+        <label for="leafSize">Размер листьев:</label>
+        <input type="range" id="leafSize" min="20" max="100" value="40">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-item">
+        <label for="petalAngle">Угол наклона лепестков:</label>
+        <input type="range" id="petalAngle" min="0" max="90" value="0">
+      </div>
+      <div class="control-item">
+        <label for="leafCount">Количество листьев:</label>
+        <input type="range" id="leafCount" min="1" max="5" value="2">
+      </div>
+      <div class="control-item">
+        <label for="leafAngle">Угол наклона листьев:</label>
+        <input type="range" id="leafAngle" min="0" max="90" value="30">
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="randomize">Случайный цветок</button>
+      <button id="share">Скопируй ссылку чтобы поделиться цветком</button>
+      <button id="reset">Сбросить</button>
+    </div>
+
+    <input type="text" id="shareUrl" readonly>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('flowerCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvas-container');
+    const fingerprintElem = document.getElementById('fingerprint');
+
+    const petalsInput = document.getElementById('petals');
+    const petalColorInput = document.getElementById('petalColor');
+    const petalSizeInput = document.getElementById('petalSize');
+    const centerSizeInput = document.getElementById('centerSize');
+    const centerColorInput = document.getElementById('centerColor');
+    const stemHeightInput = document.getElementById('stemHeight');
+    const stemWidthInput = document.getElementById('stemWidth');
+    const stemColorInput = document.getElementById('stemColor');
+    const leafSizeInput = document.getElementById('leafSize');
+    const petalAngleInput = document.getElementById('petalAngle');
+    const leafCountInput = document.getElementById('leafCount');
+    const leafAngleInput = document.getElementById('leafAngle');
+
+    const randomizeBtn = document.getElementById('randomize');
+    const shareBtn = document.getElementById('share');
+    const resetBtn = document.getElementById('reset');
+    const shareUrlInput = document.getElementById('shareUrl');
+
+    const defaultParams = {
+      petals: 8,
+      petalColor: '#FF69B4',
+      petalSize: 60,
+      centerSize: 30,
+      centerColor: '#FFA500',
+      stemHeight: 150,
+      stemWidth: 10,
+      stemColor: '#228B22',
+      leafSize: 40,
+      petalAngle: 0,
+      leafCount: 2,
+      leafAngle: 30
+    };
+
+    let params = {...defaultParams};
+
+    let interacting = false;
+    let touchPos = {x: 0, y: 0};
+    let fingerprint = {opacity: 0, x: 0, y: 0};
+
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      drawFlower();
+    }
+
+    function loadParamsFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+
+      for (const key in params) {
+        if (urlParams.has(key)) {
+          const value = urlParams.get(key);
+          if (key.includes('Color')) {
+            params[key] = value;
+          } else {
+            params[key] = Number(value);
+          }
+        }
+      }
+
+      updateInputs();
+      drawFlower();
+    }
+
+    function updateInputs() {
+      petalsInput.value = params.petals;
+      petalColorInput.value = params.petalColor;
+      petalSizeInput.value = params.petalSize;
+      centerSizeInput.value = params.centerSize;
+      centerColorInput.value = params.centerColor;
+      stemHeightInput.value = params.stemHeight;
+      stemWidthInput.value = params.stemWidth;
+      stemColorInput.value = params.stemColor;
+      leafSizeInput.value = params.leafSize;
+      petalAngleInput.value = params.petalAngle;
+      leafCountInput.value = params.leafCount;
+      leafAngleInput.value = params.leafAngle;
+    }
+
+    function saveParamsToUrl() {
+      const urlParams = new URLSearchParams();
+
+      for (const key in params) {
+        urlParams.set(key, params[key]);
+      }
+
+      const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+      window.history.pushState({}, '', newUrl);
+
+      shareUrlInput.value = window.location.href;
+      shareUrlInput.style.display = 'block';
+      shareUrlInput.select();
+    }
+
+    function resetParams() {
+      params = {...defaultParams};
+      updateInputs();
+      drawFlower();
+
+      window.history.pushState({}, '', window.location.pathname);
+      shareUrlInput.style.display = 'none';
+    }
+
+    function randomizeParams() {
+      params.petals = Math.floor(Math.random() * 15) + 5;
+      params.petalColor = getRandomColor();
+      params.petalSize = Math.floor(Math.random() * 80) + 20;
+      params.centerSize = Math.floor(Math.random() * 40) + 10;
+      params.centerColor = getRandomColor();
+      params.stemHeight = Math.floor(Math.random() * 200) + 100;
+      params.stemWidth = Math.floor(Math.random() * 15) + 5;
+      params.stemColor = getRandomColor(true);
+      params.leafSize = Math.floor(Math.random() * 60) + 20;
+      params.petalAngle = Math.floor(Math.random() * 90);
+      params.leafCount = Math.floor(Math.random() * 5) + 1;
+      params.leafAngle = Math.floor(Math.random() * 90);
+
+      updateInputs();
+      drawFlower();
+    }
+
+    function getRandomColor(greenish = false) {
+      if (greenish) {
+        const r = Math.floor(Math.random() * 100);
+        const g = Math.floor(Math.random() * 155) + 100;
+        const b = Math.floor(Math.random() * 100);
+        return `rgb(${r}, ${g}, ${b})`;
+      } else {
+        const r = Math.floor(Math.random() * 255);
+        const g = Math.floor(Math.random() * 255);
+        const b = Math.floor(Math.random() * 255);
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+    }
+
+    function drawFlower() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2 - params.stemHeight / 4;
+
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX, centerY + params.stemHeight);
+      ctx.lineWidth = params.stemWidth;
+      ctx.strokeStyle = params.stemColor;
+      ctx.stroke();
+
+      const leafSpacing = params.stemHeight / (params.leafCount + 1);
+      for (let i = 1; i <= params.leafCount; i++) {
+        const leafY = centerY + i * leafSpacing;
+        const direction = i % 2 === 0 ? 1 : -1;
+        drawLeaf(centerX, leafY, direction);
+      }
+
+      for (let i = 0; i < params.petals; i++) {
+        const angle = (i / params.petals) * Math.PI * 2;
+        const petalAngleRad = (params.petalAngle / 180) * Math.PI;
+        ctx.save();
+
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle);
+        ctx.rotate(petalAngleRad);
+
+        ctx.beginPath();
+        ctx.ellipse(
+          params.petalSize / 2,
+          0,
+          params.petalSize / 2,
+          params.petalSize / 4,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = params.petalColor;
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, params.centerSize, 0, Math.PI * 2);
+      ctx.fillStyle = params.centerColor;
+      ctx.fill();
+    }
+
+    function drawLeaf(x, y, direction) {
+      const leafWidth = params.leafSize;
+      const leafHeight = params.leafSize / 2;
+      const leafAngleRad = (params.leafAngle / 180) * Math.PI * direction;
+
+      ctx.save();
+
+      ctx.translate(x, y);
+      ctx.rotate(leafAngleRad);
+
+      ctx.beginPath();
+      ctx.ellipse(
+        direction * leafWidth / 2,
+        0,
+        leafWidth,
+        leafHeight,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = params.stemColor;
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // контролы
+    petalsInput.addEventListener('input', () => {
+      params.petals = Number(petalsInput.value);
+      drawFlower();
+    });
+
+    petalColorInput.addEventListener('input', () => {
+      params.petalColor = petalColorInput.value;
+      drawFlower();
+    });
+
+    petalSizeInput.addEventListener('input', () => {
+      params.petalSize = Number(petalSizeInput.value);
+      drawFlower();
+    });
+
+    centerSizeInput.addEventListener('input', () => {
+      params.centerSize = Number(centerSizeInput.value);
+      drawFlower();
+    });
+
+    centerColorInput.addEventListener('input', () => {
+      params.centerColor = centerColorInput.value;
+      drawFlower();
+    });
+
+    stemHeightInput.addEventListener('input', () => {
+      params.stemHeight = Number(stemHeightInput.value);
+      drawFlower();
+    });
+
+    stemWidthInput.addEventListener('input', () => {
+      params.stemWidth = Number(stemWidthInput.value);
+      drawFlower();
+    });
+
+    stemColorInput.addEventListener('input', () => {
+      params.stemColor = stemColorInput.value;
+      drawFlower();
+    });
+
+    leafSizeInput.addEventListener('input', () => {
+      params.leafSize = Number(leafSizeInput.value);
+      drawFlower();
+    });
+
+    petalAngleInput.addEventListener('input', () => {
+      params.petalAngle = Number(petalAngleInput.value);
+      drawFlower();
+    });
+
+    leafCountInput.addEventListener('input', () => {
+      params.leafCount = Number(leafCountInput.value);
+      drawFlower();
+    });
+
+    leafAngleInput.addEventListener('input', () => {
+      params.leafAngle = Number(leafAngleInput.value);
+      drawFlower();
+    });
+
+    randomizeBtn.addEventListener('click', randomizeParams);
+    shareBtn.addEventListener('click', saveParamsToUrl);
+    resetBtn.addEventListener('click', resetParams);
+
+    // пальцем можно менять размер и количество лепестков
+    function handleStart(e) {
+      e.preventDefault();
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = e.touches ? e.touches[0].clientX - canvasRect.left : e.clientX - canvasRect.left;
+      const y = e.touches ? e.touches[0].clientY - canvasRect.top : e.clientY - canvasRect.top;
+
+      interacting = true;
+      touchPos = {x, y};
+      fingerprint = {opacity: 1, x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY};
+      updateFingerprint();
+    }
+
+    function handleMove(e) {
+      if (!interacting) return;
+      e.preventDefault();
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = e.touches ? e.touches[0].clientX - canvasRect.left : e.clientX - canvasRect.left;
+      const y = e.touches ? e.touches[0].clientY - canvasRect.top : e.clientY - canvasRect.top;
+
+      const deltaX = x - touchPos.x;
+      const deltaY = y - touchPos.y;
+
+      if (Math.abs(deltaX) > 5) {
+        const newValue = params.petals + Math.sign(deltaX);
+        params.petals = Math.max(3, Math.min(20, newValue));
+        petalsInput.value = params.petals;
+      }
+
+      if (Math.abs(deltaY) > 5) {
+        const newValue = params.petalSize - Math.sign(deltaY) * 2;
+        params.petalSize = Math.max(20, Math.min(100, newValue));
+        petalSizeInput.value = params.petalSize;
+      }
+
+      touchPos = {x, y};
+      fingerprint = {opacity: 1, x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY};
+      updateFingerprint();
+      drawFlower();
+    }
+
+    function handleEnd(e) {
+      interacting = false;
+      fadeOutFingerprint();
+    }
+
+    function updateFingerprint() {
+      fingerprintElem.style.opacity = fingerprint.opacity;
+      fingerprintElem.style.left = `${fingerprint.x}px`;
+      fingerprintElem.style.top = `${fingerprint.y}px`;
+    }
+
+    function fadeOutFingerprint() {
+      fingerprintElem.style.opacity = 0;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('mouseleave', handleEnd);
+    canvas.addEventListener('touchstart', handleStart);
+    canvas.addEventListener('touchmove', handleMove);
+    canvas.addEventListener('touchend', handleEnd);
+
+    window.addEventListener('resize', resizeCanvas);
+    loadParamsFromUrl();
+    resizeCanvas();
+  </script>
+</body>
+
+</html>
