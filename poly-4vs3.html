@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Визуализация полиритма 4:3</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f5f5f5;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    canvas {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      align-items: center;
+      max-width: 600px;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #4C6EF5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+      min-width: 150px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    button:hover {
+      background-color: #3A5AD1;
+    }
+
+    .rhythm-labels {
+      display: flex;
+      justify-content: space-between;
+      width: 80%;
+      margin-bottom: 10px;
+    }
+
+    .rhythm-label {
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+
+    .rhythm-label.triplet {
+      color: #E53935;
+    }
+
+    .rhythm-label.quad {
+      color: #43A047;
+    }
+
+    .tempo-controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    .tempo-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .tempo-option input {
+      cursor: pointer;
+    }
+
+    .tempo-option span {
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="rhythm-labels">
+      <div class="rhythm-label triplet">Триоль (3)</div>
+      <div class="rhythm-label quad">Квадроль (4)</div>
+    </div>
+
+    <div class="controls">
+      <div class="control-row">
+        <button id="playButton">⏯️ Играть</button>
+        <button id="resetButton">⏹️ Сбросить</button>
+        <button id="soundButton"><span id="soundToggleText">Звук вкл</span> <span id="soundIcon">🔊</span></button>
+      </div> <!-- /div control-row -->
+
+      <div class="control-row">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="pulseSoundCheckbox" checked>
+          <span>Звук пульса</span>
+        </label>
+      </div>
+
+      <div class="tempo-controls">
+        <label class="tempo-option">
+          <input type="radio" name="tempo" value="15">
+          <span>🐢 медленно</span>
+        </label>
+        <label class="tempo-option">
+          <input type="radio" name="tempo" value="30" checked>
+          <span>🚶🏻норм</span>
+        </label>
+        <label class="tempo-option">
+          <input type="radio" name="tempo" value="60">
+          <span>🏃🏻‍♂️быстро</span>
+        </label>
+        <label class="tempo-option">
+          <input type="radio" name="tempo" value="120">
+          <span>🚀 ААА</span>
+        </label>
+      </div> <!-- /div tempo-controls -->
+
+    </div> <!-- /div controls -->
+
+    <canvas id="polyrhythmCanvas"></canvas>
+
+  </div>
+
+  <div id="fingerprint"></div>
+
+  <script>
+    const canvas = document.getElementById('polyrhythmCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let audioCtx;
+    function initAudio() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playSound(frequency, duration, type = 'sine') {
+      if (!audioCtx) initAudio();
+      if (!config.soundEnabled) return;
+
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      // метроном потише
+      const volume = frequency === config.metronomeFreq ? 0.01 : 0.3;
+      gainNode.gain.setValueAtTime(volume, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+    }
+
+    const config = {
+      tempo: 60,
+      playing: false,
+      soundEnabled: true,
+      pulseSoundEnabled: true,
+      tripletFreq: 880,   // A5
+      quadFreq: 440,    // A4
+      metronomeFreq: 660, // E5
+      tripletColor: '#E53935', // Красный
+      quadColor: '#43A047', // Зеленый
+      metronomeColor: '#333333', // Серый
+      lastFrameTime: 0,
+      metronomePosition: 0,
+      beatDuration: 1,    // seconds
+      gridSize: 12, // НОК(3,4) = 12
+      quadPattern: [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0], // 4 удара
+      tripletPattern: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 3 удара
+      ringRadius: 120,
+      markerRadius: 15,
+      centerX: 300,
+      centerY: 200,
+      pulseAnimation: {
+        maxScale: 1.5,
+        duration: 0.3,  // seconds
+        tripletScale: 1,
+        quadScale: 1,
+        metronomeScale: 1,
+        lastTriggerTime: 0
+      }
+    };
+
+    const playButton = document.getElementById('playButton');
+    const resetButton = document.getElementById('resetButton');
+    const soundButton = document.getElementById('soundButton');
+    const soundToggleText = document.getElementById('soundToggleText');
+    const soundIcon = document.getElementById('soundIcon');
+    const pulseSoundCheckbox = document.getElementById('pulseSoundCheckbox');
+    const tempoRadios = document.querySelectorAll('input[name="tempo"]');
+
+    tempoRadios.forEach(radio => {
+      radio.addEventListener('change', function () {
+        config.tempo = parseInt(this.value);
+        config.beatDuration = 60 / config.tempo / config.gridSize;
+        console.log(config.beatDuration);
+      });
+    });
+
+    playButton.addEventListener('click', function () {
+      config.playing = !config.playing;
+      this.textContent = config.playing ? '⏸️ Пауза' : '▶️ Играть';
+      if (config.playing && !audioCtx) {
+        initAudio();
+      }
+    });
+
+    resetButton.addEventListener('click', function () {
+      config.playing = false;
+      playButton.textContent = '▶️ Играть';
+      config.metronomePosition = 0;
+      config.pulseAnimation.tripletScale = 1;
+      config.pulseAnimation.quadScale = 1;
+      config.pulseAnimation.metronomeScale = 1;
+      pulseSoundCheckbox.checked = true;
+      config.pulseSoundEnabled = true;
+    });
+
+    soundButton.addEventListener('click', function () {
+      config.soundEnabled = !config.soundEnabled;
+      soundIcon.textContent = config.soundEnabled ? '🔊' : '🔇';
+      soundToggleText.textContent = config.soundEnabled ? 'Звук вкл' : 'Звук выкл';
+
+      if (config.soundEnabled && !audioCtx) {
+        initAudio();
+      }
+    });
+
+    pulseSoundCheckbox.addEventListener('change', function () {
+      config.pulseSoundEnabled = this.checked;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const centerX = config.centerX;
+      const centerY = config.centerY;
+      const radius = config.ringRadius;
+      const markerRadius = config.markerRadius;
+
+      const gridPosition = Math.floor(config.metronomePosition * config.gridSize) % config.gridSize;
+
+      drawPulse(
+        centerX,
+        centerY - radius - 10,
+        markerRadius * config.pulseAnimation.metronomeScale,
+        `Пульс: ${gridPosition + 1}`,
+      )
+
+      const isQuadActive = config.quadPattern[gridPosition];
+      const isTripletActive = config.tripletPattern[gridPosition];
+
+      drawRhythmCircle(
+        centerX,
+        centerY - radius / 2,
+        radius,
+        4, // квадроль
+        config.quadPattern,
+        gridPosition,
+        config.quadColor,
+        isQuadActive ? config.pulseAnimation.quadScale : 1
+      );
+
+      drawRhythmCircle(
+        centerX,
+        centerY + radius / 2,
+        radius,
+        3, // триоль
+        config.tripletPattern,
+        gridPosition,
+        config.tripletColor,
+        isTripletActive ? config.pulseAnimation.tripletScale : 1
+      );
+
+      drawTimeGrid(
+        centerX - radius,
+        centerY + radius + 50,
+        radius * 2,
+        40
+      );
+
+      // Eat your goddamn porridge
+      if (config.playing) {
+        const words = ['Eat', 'Eat', 'Eat', 'your', 'God-', 'God-', '-damn', '-damn', 'Porridge', 'Porridge', 'Porridge', 'Porridge'];
+
+        ctx.fillStyle = '#333';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // слово/слог в зависимости от текущей позиции сетки
+        const word = words[gridPosition % words.length];
+        ctx.fillText(word, centerX, centerY);
+      }
+    }
+
+    function drawPulse(x, y, r, text) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = config.metronomeColor;
+      ctx.fill();
+
+      ctx.fillStyle = '#333';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y + 40);
+      ctx.restore();
+    }
+
+    function drawRhythmCircle(centerX, centerY, radius, numBeats, pattern, currentPosition, color, scale) {
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      for (let i = 0; i < numBeats; i++) {
+        const activePositions = [];
+        for (let j = 0; j < pattern.length; j++) {
+          if (pattern[j] && j % numBeats === i) {
+            activePositions.push(j);
+          }
+        }
+
+        if (activePositions.length === 0) {
+          for (let j = 0; j < pattern.length; j++) {
+            if (j % numBeats === i) {
+              activePositions.push(j);
+              break;
+            }
+          }
+        }
+
+        for (const position of activePositions) {
+          const angle = (position / config.gridSize) * Math.PI * 2 - Math.PI / 2;
+          const markerX = centerX + radius * Math.cos(angle);
+          const markerY = centerY + radius * Math.sin(angle);
+
+          const isActive = position === currentPosition;
+
+          // круги для триоли, квадраты для квадроли
+          if (numBeats === 3) {
+            ctx.beginPath();
+            ctx.arc(markerX, markerY, config.markerRadius * (isActive ? scale : 1), 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? color : '#e0e0e0';
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (numBeats === 4) {
+            ctx.beginPath();
+            const size = config.markerRadius * 1.8 * (isActive ? scale : 1);
+            ctx.rect(markerX - size / 2, markerY - size / 2, size, size);
+            ctx.fillStyle = isActive ? color : '#e0e0e0';
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#333';
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          if (numBeats === 3) {
+            ctx.fillText((i + 1).toString(), markerX, markerY);
+          } else if (numBeats === 4) {
+            const label = (i === 0) ? "1" : (5 - i).toString()
+            ctx.fillText(label, markerX, markerY);
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawTimeGrid(x, y, width, height) {
+      const gridSize = config.gridSize;
+      const cellWidth = width / gridSize;
+      const currentPos = Math.floor(config.metronomePosition * gridSize) % gridSize;
+
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(x, y, width, height);
+
+      for (let i = 0; i < gridSize; i++) {
+        const cellX = x + i * cellWidth;
+
+        if (i === currentPos) {
+          ctx.fillStyle = '#e3f2fd';
+          ctx.fillRect(cellX, y, cellWidth, height);
+        }
+
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cellX, y, cellWidth, height);
+
+        ctx.fillStyle = '#333';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((i + 1).toString(), cellX + cellWidth / 2, y + height / 4);
+
+        const yQuad = y + height * 0.5;
+        const yTriplet = y + height * 0.8;
+
+        if (config.quadPattern[i]) {
+          ctx.fillStyle = config.quadColor;
+          ctx.beginPath();
+          const sz = (i === currentPos) ? 10 : 8;
+          ctx.rect(cellX + cellWidth / 2 - sz / 2, yQuad - sz / 2, sz, sz);
+          ctx.fill();
+        }
+
+        // Триоль
+        if (config.tripletPattern[i]) {
+          ctx.fillStyle = config.tripletColor;
+          ctx.beginPath();
+          const r = (i === currentPos) ? 6 : 5;
+          ctx.arc(cellX + cellWidth / 2, yTriplet, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Легенда
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'left';
+
+      ctx.fillStyle = config.quadColor;
+      ctx.fillText('Квадроль', x, y + height + 15);
+
+      ctx.fillStyle = config.tripletColor;
+      ctx.fillText('Триоль', x + 80, y + height + 15);
+    }
+
+    function animate(currentTime) {
+      requestAnimationFrame(animate);
+
+      currentTime = currentTime / 1000;
+      const deltaTime = Math.min(0.1, currentTime - config.lastFrameTime);
+      config.lastFrameTime = currentTime;
+
+      if (config.playing) {
+        const prevGridPos = Math.floor(config.metronomePosition * config.gridSize) % config.gridSize;
+
+        config.metronomePosition += deltaTime / config.beatDuration / config.gridSize;
+        if (config.metronomePosition >= 1) {
+          config.metronomePosition -= 1;
+        }
+
+        const currentGridPos = Math.floor(config.metronomePosition * config.gridSize) % config.gridSize;
+
+        if (currentGridPos !== prevGridPos) {
+          if (config.pulseSoundEnabled) {
+            playSound(config.metronomeFreq, 0.1, 'sine');
+          }
+          config.pulseAnimation.metronomeScale = config.pulseAnimation.maxScale;
+          config.pulseAnimation.lastTriggerTime = currentTime;
+
+          if (config.quadPattern[currentGridPos]) {
+            playSound(config.quadFreq, 0.1, 'triangle');
+            config.pulseAnimation.quadScale = config.pulseAnimation.maxScale;
+          }
+
+          if (config.tripletPattern[currentGridPos]) {
+            playSound(config.tripletFreq, 0.1, 'sawtooth');
+            config.pulseAnimation.tripletScale = config.pulseAnimation.maxScale;
+          }
+        }
+      }
+
+      const pulseAnim = config.pulseAnimation;
+      const elapsed = currentTime - pulseAnim.lastTriggerTime;
+      const animProgress = Math.max(0, 1 - elapsed / pulseAnim.duration);
+
+      // затухание у точки пульса
+      pulseAnim.metronomeScale = 1 + (pulseAnim.maxScale - 1) * animProgress;
+
+      draw();
+    }
+
+    function resizeCanvas() {
+      const container = document.querySelector('.container');
+      const containerWidth = container.clientWidth;
+
+      const W = Math.min(window.innerWidth - 40, 800);
+      const H = W * 1.5
+      canvas.width = W;
+      canvas.height = H;
+
+      config.centerX = canvas.width / 2;
+      config.centerY = canvas.height / 2 - 10;
+
+      config.ringRadius = Math.min(canvas.width, canvas.height) * 0.35;
+    }
+
+    // начинаем на "норм"
+    config.beatDuration = 1.0 / 6.0;
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // initial animation call
+    requestAnimationFrame(animate);
+  </script>
+</body>
+
+</html>
