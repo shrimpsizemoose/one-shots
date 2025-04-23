@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Уравнение Циолковского 🚀</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    .formula {
+      text-align: center;
+      margin: 15px 0;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 20px;
+    }
+
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #fff;
+    }
+
+    .controls {
+      margin: 20px 0;
+    }
+
+    .slider-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 5px;
+    }
+
+    .value-display {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Уравнение Циолковского 🚀</h1>
+
+    <div class="formula">
+      Δv = v<sub>e</sub> × ln(m<sub>0</sub>/m<sub>1</sub>)
+    </div>
+
+    <canvas id="rocketCanvas" width="500" height="300"></canvas>
+
+    <div class="controls">
+      <div class="slider-group">
+        <label for="exhaustVelocity">Скорость истечения газов (v<sub>e</sub>):</label>
+        <input type="range" id="exhaustVelocity" min="1000" max="5000" step="100" value="2500">
+        <div class="value-display">
+          <span>1000 м/с</span>
+          <span id="exhaustVelocityValue">2500 м/с</span>
+          <span>5000 м/с</span>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <label for="massRatio">Отношение масс (m<sub>0</sub>/m<sub>1</sub>):</label>
+        <input type="range" id="massRatio" min="1" max="10" step="0.1" value="3">
+        <div class="value-display">
+          <span>1</span>
+          <span id="massRatioValue">3</span>
+          <span>10</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const canvas = document.getElementById('rocketCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const exhaustVelocitySlider = document.getElementById('exhaustVelocity');
+    const massRatioSlider = document.getElementById('massRatio');
+
+    const exhaustVelocityValue = document.getElementById('exhaustVelocityValue');
+    const massRatioValue = document.getElementById('massRatioValue');
+
+    let exhaustVelocity = parseFloat(exhaustVelocitySlider.value);
+    let massRatio = parseFloat(massRatioSlider.value);
+
+    const margin = 40;
+    const width = canvas.width;
+    const height = canvas.height;
+    const escapeVelocity1 = 8000;
+    const escapeVelocity2 = 11200;
+
+    function updateParameters() {
+      exhaustVelocity = parseFloat(exhaustVelocitySlider.value);
+      massRatio = parseFloat(massRatioSlider.value);
+
+      exhaustVelocityValue.textContent = exhaustVelocity + " м/с";
+      massRatioValue.textContent = massRatio.toFixed(1);
+
+      drawRocketGraph();
+    }
+
+    function drawRocketGraph() {
+      ctx.clearRect(0, 0, width, height);
+
+      const maxVelocity = Math.max(exhaustVelocity * Math.log(massRatio) * 1.2, 12000);
+
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(margin, margin);
+      ctx.lineTo(margin, height - margin);
+      ctx.lineTo(width - margin, height - margin);
+      ctx.stroke();
+
+      ctx.fillStyle = '#333';
+      ctx.font = '12px Arial';
+
+      ctx.textAlign = 'center';
+      ctx.fillText('Относительная масса ракеты', width / 2, height - 10);
+
+      ctx.save();
+      ctx.translate(15, height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText('Скорость (м/с)', 0, 0);
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      for (let i = 0; i <= 10; i++) {
+        const massPercentage = 100 - i * 10;
+        const x = margin + (width - 2 * margin) * (i / 10);
+
+        ctx.beginPath();
+        ctx.moveTo(x, height - margin);
+        ctx.lineTo(x, height - margin + 5);
+        ctx.stroke();
+
+        if (i % 2 === 0) {
+          ctx.fillText(massPercentage + '%', x, height - margin + 15);
+        }
+      }
+
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 5; i++) {
+        const vel = i * maxVelocity / 5;
+        const y = height - margin - (height - 2 * margin) * (i / 5);
+
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(margin - 5, y);
+        ctx.stroke();
+
+        ctx.fillText(Math.round(vel) + '', margin - 8, y + 4);
+      }
+
+      const y1 = height - margin - (height - 2 * margin) * (escapeVelocity1 / maxVelocity);
+      const y2 = height - margin - (height - 2 * margin) * (escapeVelocity2 / maxVelocity);
+
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(margin, y1);
+      ctx.lineTo(width - margin, y1);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+      ctx.textAlign = 'left';
+      ctx.fillText('Первая космическая (8 км/с)', margin + 5, y1 - 5);
+
+      ctx.strokeStyle = 'rgba(0, 150, 0, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(margin, y2);
+      ctx.lineTo(width - margin, y2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(0, 150, 0, 0.7)';
+      ctx.fillText('Вторая космическая (11.2 км/с)', margin + 5, y2 - 5);
+
+      ctx.strokeStyle = '#4286f4';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      for (let i = 0; i <= 100; i++) {
+        const massPercentage = 100 - i;
+        const massRatioPoint = 100 / (100 - i * (1 - 100 / massRatio / 100));
+
+        let velocity = 0;
+        if (massRatioPoint > 1) {
+          velocity = exhaustVelocity * Math.log(massRatioPoint);
+        }
+
+        const x = margin + (width - 2 * margin) * (i / 100);
+        const y = height - margin - (height - 2 * margin) * (velocity / maxVelocity);
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.stroke();
+
+      const finalVelocity = exhaustVelocity * Math.log(massRatio);
+      const finalY = height - margin - (height - 2 * margin) * (finalVelocity / maxVelocity);
+
+      ctx.beginPath();
+      ctx.arc(width - margin, finalY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#4286f4';
+      ctx.fill();
+
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'right';
+      ctx.fillText(Math.round(finalVelocity) + ' м/с', width - margin - 10, finalY - 10);
+    }
+
+    exhaustVelocitySlider.addEventListener('input', updateParameters);
+    massRatioSlider.addEventListener('input', updateParameters);
+
+    updateParameters();
+  </script>
+</body>
+
+</html>

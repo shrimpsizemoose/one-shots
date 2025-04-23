@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Грузик на пружинке</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      overflow-x: hidden;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+      font-size: 24px;
+      text-align: center;
+      color: #50394c;
+    }
+
+    p {
+      margin: 5px 0 15px 0;
+      font-size: 14px;
+      text-align: center;
+      max-width: 800px;
+      color: #5f4b66;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .simulation-container {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .oscillator-container {
+      width: 300px;
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phase-container {
+      width: 400px;
+      height: 300px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #fffefc;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(146, 118, 87, 0.2);
+    }
+
+    .sliders {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      margin: 10px;
+      width: 200px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #b06f6a;
+    }
+
+    button {
+      background-color: #b06f6a;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #9e5a55;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .formula {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 18px;
+      text-align: center;
+      margin: 15px 0;
+      color: #50394c;
+    }
+
+    .eq-highlight {
+      color: #b06f6a;
+      font-weight: bold;
+    }
+
+    .info-box {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f4efe1;
+      border-left: 3px solid #b06f6a;
+      font-size: 14px;
+      width: 100%;
+      color: #5f4b66;
+    }
+
+    .fingerprint {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px solid rgba(176, 111, 106, 0.8);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(176, 111, 106, 0.3) 0%, rgba(176, 111, 106, 0) 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .fingerprint::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background-color: rgba(176, 111, 106, 0.8);
+      border-radius: 50%;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="formula">
+      m<span class="eq-highlight">ẍ</span> + b<span class="eq-highlight">ẋ</span> + k<span class="eq-highlight">x</span>
+      = 0
+    </div>
+
+    <div class="simulation-container">
+      <div class="oscillator-container">
+        <canvas id="oscillatorCanvas" width="400" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="sliders">
+        <div class="slider-group">
+          <label for="massSlider">Масса (m): <span id="massValue">1.0</span></label>
+          <input type="range" id="massSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+          <!-- <div class="info-box"> -->
+          <!-- ↑ увеличивает инерцию<br> -->
+          <!-- ↓ ускоряет колебания -->
+          <!-- </div> -->
+        </div>
+
+        <div class="slider-group">
+          <label for="dampingSlider">Затухание (b): <span id="dampingValue">0.05</span></label>
+          <input type="range" id="dampingSlider" min="0.0" max="0.5" step="0.01" value="0.05">
+          <!-- <div class="info-box"> -->
+          <!-- ↑ быстрее затухают колебания<br> -->
+          <!-- ↓ колебания продолжаются дольше -->
+          <!-- </div> -->
+        </div>
+
+        <div class="slider-group">
+          <label for="stiffnessSlider">Жесткость (k): <span id="stiffnessValue">1.0</span></label>
+          <input type="range" id="stiffnessSlider" min="0.1" max="4.0" step="0.1" value="1.0">
+          <!-- <div class="info-box"> -->
+          <!-- ↑ увеличивает частоту колебаний<br> -->
+          <!-- ↓ замедляет колебания -->
+          <!-- </div> -->
+        </div>
+      </div>
+
+      <div class="simulation-container">
+        <div class="phase-container">
+          <canvas id="phaseCanvas" width="400" height="300"></canvas>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="resetButton">Сбросить</button>
+        <button id="pauseButton">Пауза</button>
+        <button id="initialCondButton">Изменить начальные условия</button>
+      </div>
+
+      <div class="info-box">
+        <strong>Важные точки фазового портрета:</strong><br>
+        • Крайние точки (v = 0) - когда маятник останавливается в крайнем положении<br>
+        • Точки пересечения с осью x (x = 0) - когда маятник проходит через положение равновесия с максимальной
+        скоростью
+      </div>
+    </div>
+  </div>
+
+  <div class="fingerprint" id="fingerprint"></div>
+
+  <script>
+    const oscillatorCanvas = document.getElementById('oscillatorCanvas');
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const massSlider = document.getElementById('massSlider');
+    const dampingSlider = document.getElementById('dampingSlider');
+    const stiffnessSlider = document.getElementById('stiffnessSlider');
+    const massValue = document.getElementById('massValue');
+    const dampingValue = document.getElementById('dampingValue');
+    const stiffnessValue = document.getElementById('stiffnessValue');
+    const resetButton = document.getElementById('resetButton');
+    const pauseButton = document.getElementById('pauseButton');
+    const initialCondButton = document.getElementById('initialCondButton');
+    const fingerprint = document.getElementById('fingerprint');
+
+    const oscCtx = oscillatorCanvas.getContext('2d');
+    const phaseCtx = phaseCanvas.getContext('2d');
+
+    let mass = parseFloat(massSlider.value);
+    let damping = parseFloat(dampingSlider.value);
+    let stiffness = parseFloat(stiffnessSlider.value);
+
+    let position = 80;
+    let velocity = 0;
+    let time = 0;
+    let isPaused = false;
+
+    const dt = 0.05;
+    const springLength = 100;
+    const maxTrailPoints = 500;
+    const phaseScale = 1.5;
+
+    let phaseTrail = [];
+
+    const springCoils = 8;
+    const springWidth = 20;
+
+    function updateParameters() {
+      mass = parseFloat(massSlider.value);
+      damping = parseFloat(dampingSlider.value);
+      stiffness = parseFloat(stiffnessSlider.value);
+
+      massValue.textContent = mass.toFixed(1);
+      dampingValue.textContent = damping.toFixed(2);
+      stiffnessValue.textContent = stiffness.toFixed(1);
+    }
+
+    function drawSpring(ctx, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+
+      ctx.save();
+      ctx.translate(x1, y1);
+      ctx.rotate(angle);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+
+      ctx.lineTo(distance * 0.1, 0);
+
+      const coilLength = distance * 0.8;
+      const step = coilLength / springCoils;
+
+      for (let i = 0; i < springCoils; i++) {
+        const x = distance * 0.1 + i * step;
+        const y = (i % 2 === 0) ? springWidth : -springWidth;
+        ctx.lineTo(x, y);
+      }
+
+      ctx.lineTo(distance, 0);
+
+      ctx.strokeStyle = '#b06f6a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawWeight(ctx, x, y) {
+      const size = 30 * Math.sqrt(mass);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(x - size / 2 + 3, y - size / 2 + 3, size, size);
+
+      ctx.fillStyle = '#8b5e83';
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      ctx.strokeStyle = '#50394c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+    }
+
+    function drawOscillator() {
+      const width = oscillatorCanvas.width;
+      const height = oscillatorCanvas.height;
+
+      oscCtx.clearRect(0, 0, width, height);
+
+      oscCtx.fillStyle = '#fffefc';
+      oscCtx.fillRect(0, 0, width, height);
+
+      oscCtx.beginPath();
+      oscCtx.moveTo(0, height / 2);
+      oscCtx.lineTo(width, height / 2);
+      oscCtx.strokeStyle = '#d8c9b1';
+      oscCtx.lineWidth = 1;
+      oscCtx.stroke();
+
+      // Рисуем стену
+      oscCtx.fillStyle = '#918066';
+      oscCtx.fillRect(0, height / 2 - 50, 10, 100);
+
+      const wallX = 10;
+      const wallY = height / 2;
+      const weightX = wallX + springLength + position;
+      const weightY = wallY;
+
+      drawSpring(oscCtx, wallX, wallY, weightX, weightY);
+
+      drawWeight(oscCtx, weightX, weightY);
+
+      oscCtx.beginPath();
+      oscCtx.moveTo(wallX + springLength, height / 2 - 40);
+      oscCtx.lineTo(wallX + springLength, height / 2 + 40);
+      oscCtx.strokeStyle = 'rgba(80, 57, 76, 0.3)';
+      oscCtx.setLineDash([5, 5]);
+      oscCtx.lineWidth = 1;
+      oscCtx.stroke();
+
+      oscCtx.fillStyle = 'rgba(80, 57, 76, 0.6)';
+      oscCtx.font = '12px Arial';
+      oscCtx.textAlign = 'center';
+      oscCtx.fillText('x = 0', wallX + springLength, height / 2 + 60);
+
+      oscCtx.setLineDash([]);
+
+      oscCtx.fillStyle = '#50394c';
+      oscCtx.font = '14px Arial';
+      oscCtx.textAlign = 'left';
+      oscCtx.fillText(`Положение (x): ${position.toFixed(1)}`, 20, 30);
+      oscCtx.fillText(`Скорость (v): ${velocity.toFixed(1)}`, 20, 50);
+    }
+
+    function drawPhasePortrait() {
+      const width = phaseCanvas.width;
+      const height = phaseCanvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      phaseCtx.clearRect(0, 0, width, height);
+
+      phaseCtx.fillStyle = '#fffefc';
+      phaseCtx.fillRect(0, 0, width, height);
+
+      phaseCtx.beginPath();
+      phaseCtx.moveTo(0, centerY);
+      phaseCtx.lineTo(width, centerY);
+      phaseCtx.moveTo(centerX, 0);
+      phaseCtx.lineTo(centerX, height);
+      phaseCtx.strokeStyle = '#d8c9b1';
+      phaseCtx.lineWidth = 1;
+      phaseCtx.stroke();
+
+      phaseCtx.fillStyle = '#50394c';
+      phaseCtx.font = '14px Arial';
+      phaseCtx.textAlign = 'center';
+      phaseCtx.fillText('Положение (x)', width - 70, centerY - 10);
+      phaseCtx.fillText('Скорость (v)', centerX + 70, 20);
+
+      if (phaseTrail.length > 1) {
+        phaseCtx.beginPath();
+        phaseCtx.moveTo(
+          centerX + phaseTrail[0].x * phaseScale,
+          centerY - phaseTrail[0].v * phaseScale
+        );
+
+        for (let i = 1; i < phaseTrail.length; i++) {
+          phaseCtx.lineTo(
+            centerX + phaseTrail[i].x * phaseScale,
+            centerY - phaseTrail[i].v * phaseScale
+          );
+        }
+
+        phaseCtx.strokeStyle = '#b06f6a';
+        phaseCtx.lineWidth = 2;
+        phaseCtx.stroke();
+      }
+
+      const phaseX = centerX + position * phaseScale;
+      const phaseY = centerY - velocity * phaseScale;
+
+      phaseCtx.beginPath();
+      phaseCtx.arc(phaseX, phaseY, 5, 0, Math.PI * 2);
+      phaseCtx.fillStyle = '#8b5e83';
+      phaseCtx.fill();
+
+      if (damping < 0.05) {
+        let maxX = 0;
+        let maxV = 0;
+        for (let point of phaseTrail) {
+          maxX = Math.max(maxX, Math.abs(point.x));
+          maxV = Math.max(maxV, Math.abs(point.v));
+        }
+
+        phaseCtx.beginPath();
+        phaseCtx.arc(centerX + maxX * phaseScale, centerY, 3, 0, Math.PI * 2);
+        phaseCtx.fillStyle = '#946e6b';
+        phaseCtx.fill();
+
+        phaseCtx.beginPath();
+        phaseCtx.arc(centerX - maxX * phaseScale, centerY, 3, 0, Math.PI * 2);
+        phaseCtx.fillStyle = '#946e6b';
+        phaseCtx.fill();
+
+        phaseCtx.beginPath();
+        phaseCtx.arc(centerX, centerY - maxV * phaseScale, 3, 0, Math.PI * 2);
+        phaseCtx.fillStyle = '#946e6b';
+        phaseCtx.fill();
+
+        phaseCtx.beginPath();
+        phaseCtx.arc(centerX, centerY + maxV * phaseScale, 3, 0, Math.PI * 2);
+        phaseCtx.fillStyle = '#946e6b';
+        phaseCtx.fill();
+      }
+    }
+
+    function updateSystem() {
+      const acceleration = (-stiffness * position - damping * velocity) / mass;
+
+      velocity += acceleration * dt;
+      position += velocity * dt;
+      phaseTrail.push({x: position, v: velocity});
+
+      if (phaseTrail.length > maxTrailPoints) {
+        phaseTrail.shift();
+      }
+
+      time += dt;
+    }
+
+    function animate() {
+      if (!isPaused) {
+        updateSystem();
+      }
+
+      drawOscillator();
+      drawPhasePortrait();
+
+      requestAnimationFrame(animate);
+    }
+
+    function resetSystem() {
+      position = 80;
+      velocity = 0;
+      time = 0;
+      phaseTrail = [];
+
+      massSlider.value = 1.0;
+      dampingSlider.value = 0.05;
+      stiffnessSlider.value = 1.0;
+      updateParameters();
+    }
+
+    function changeInitialConditions() {
+      position = (Math.random() * 2 - 1) * 100;
+      velocity = (Math.random() * 2 - 1) * 80;
+      phaseTrail = [];
+    }
+
+    massSlider.addEventListener('input', updateParameters);
+    dampingSlider.addEventListener('input', updateParameters);
+    stiffnessSlider.addEventListener('input', updateParameters);
+    resetButton.addEventListener('click', resetSystem);
+    pauseButton.addEventListener('click', function () {
+      isPaused = !isPaused;
+      pauseButton.textContent = isPaused ? 'Продолжить' : 'Пауза';
+    });
+    initialCondButton.addEventListener('click', changeInitialConditions);
+
+    // fingerprint interaction
+    let interacting = false;
+    let touchPos = {x: 0, y: 0};
+
+    function handleStart(e) {
+      e.preventDefault();
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+      interacting = true;
+      touchPos = {x, y};
+
+      fingerprint.style.opacity = '1';
+      fingerprint.style.left = `${x}px`;
+      fingerprint.style.top = `${y}px`;
+    }
+
+    function handleMove(e) {
+      if (!interacting) return;
+
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const dx = x - touchPos.x;
+
+      if (e.target === oscillatorCanvas) {
+        position += dx * 0.5;
+        phaseTrail = [];
+      }
+
+      touchPos = {x, y};
+
+      fingerprint.style.left = `${x}px`;
+      fingerprint.style.top = `${y}px`;
+    }
+
+    function handleEnd() {
+      interacting = false;
+      fingerprint.style.opacity = '0';
+    }
+
+    oscillatorCanvas.addEventListener('mousedown', handleStart);
+    oscillatorCanvas.addEventListener('touchstart', handleStart, {passive: false});
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('touchmove', handleMove, {passive: false});
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchend', handleEnd);
+
+    updateParameters();
+    animate();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Жизнь замечательных частиц</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    #controls label {
+      display: block;
+      margin-top: 5px;
+      cursor: pointer;
+    }
+
+    #fingerprint {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    .info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="controls">
+    <div>Притяжение: <span id="attraction-value">1.0</span></div>
+    <div>Энергия: <span id="energy-value">1.0</span></div>
+    <label>
+      <input type="checkbox" id="color-mode"> Цвет = энергия
+    </label>
+  </div>
+  <div id="fingerprint"></div>
+  <div class="info">
+    <p>Управление пальцем:<br>
+      ⬅️➡️ притяжение<br>
+      ⬆️⬇️ энергия</p>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const fingerprintEl = document.getElementById('fingerprint');
+      const attractionValueEl = document.getElementById('attraction-value');
+      const energyValueEl = document.getElementById('energy-value');
+      const colorModeCheckbox = document.getElementById('color-mode');
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      let attractionStrength = 1.0;
+      let energyLevel = 1.0;
+      const numParticles = 150;
+      const particles = [];
+      const trailOpacity = 0.3;
+      const friction = 0.98;
+      let useEnergyColor = false;
+
+      let interacting = false;
+      let touchPos = {x: 0, y: 0};
+      let fingerprint = {opacity: 0, x: 0, y: 0};
+
+      colorModeCheckbox.addEventListener('change', function () {
+        useEnergyColor = this.checked;
+
+        if (!useEnergyColor) {
+          particles.forEach(p => {
+            p.color = getRandomColor();
+          });
+        }
+      });
+
+      function initParticles() {
+        for (let i = 0; i < numParticles; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            radius: 3 + Math.random() * 2,
+            color: getRandomColor(),
+            energy: 0
+          });
+        }
+      }
+
+      function getRandomColor() {
+        const hue = Math.random() * 360;
+        return `hsl(${hue}, 80%, 60%)`;
+      }
+
+      // Calculate Van der Waals-inspired force between particles
+      function calculateForce(distance, strength) {
+        const repulsionRange = 30;
+        const attractionRange = 100;
+
+        if (distance < repulsionRange) {
+          // вблизи отталкиваемся
+          return -strength * (repulsionRange / distance) ** 2;
+        } else if (distance < attractionRange) {
+          // на удалении притягиваемся
+          return strength * 0.3;
+        } else {
+          // очень далеко -- пофиг
+          return 0;
+        }
+      }
+
+      function updateParticles() {
+        for (let i = 0; i < particles.length; i++) {
+          const p1 = particles[i];
+          p1.energy = 0;
+
+          for (let j = 0; j < particles.length; j++) {
+            if (i === j) continue;
+
+            const p2 = particles[j];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 0 && distance < 150) {
+              const force = calculateForce(distance, attractionStrength);
+              const fx = (dx / distance) * force;
+              const fy = (dy / distance) * force;
+
+              p1.vx += fx * 0.02 * energyLevel;
+              p1.vy += fy * 0.02 * energyLevel;
+
+              p1.energy += Math.abs(force) * 0.1;
+            }
+          }
+
+          p1.vx *= friction;
+          p1.vy *= friction;
+
+          p1.x += p1.vx;
+          p1.y += p1.vy;
+
+          // кинетическая энергия
+          const speed = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
+          p1.energy += speed * 3;
+
+          if (useEnergyColor) {
+            // blue=low, red=high
+            const hue = Math.max(0, Math.min(240 - p1.energy * 20, 240));
+            p1.color = `hsl(${hue}, 80%, 60%)`;
+          }
+
+          // wrap around boundary conditions
+          if (p1.x < 0) p1.x = canvas.width;
+          if (p1.x > canvas.width) p1.x = 0;
+          if (p1.y < 0) p1.y = canvas.height;
+          if (p1.y > canvas.height) p1.y = 0;
+        }
+      }
+
+      function render() {
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - trailOpacity})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+        });
+
+        fingerprintEl.style.opacity = fingerprint.opacity;
+        fingerprintEl.style.left = `${fingerprint.x}px`;
+        fingerprintEl.style.top = `${fingerprint.y}px`;
+
+        attractionValueEl.textContent = attractionStrength.toFixed(1);
+        energyValueEl.textContent = energyLevel.toFixed(1);
+      }
+
+      function animate() {
+        updateParticles();
+        render();
+        requestAnimationFrame(animate);
+      }
+
+      function handleStart(e) {
+        e.preventDefault();
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+        interacting = true;
+        touchPos = {x, y};
+        fingerprint = {opacity: 1, x, y};
+      }
+
+      function handleMove(e) {
+        e.preventDefault();
+        if (!interacting) return;
+
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const dx = x - touchPos.x;
+        attractionStrength += dx * 0.01;
+        attractionStrength = Math.max(0.1, Math.min(3.0, attractionStrength));
+
+        const dy = y - touchPos.y;
+        energyLevel -= dy * 0.01;
+        energyLevel = Math.max(0.1, Math.min(3.0, energyLevel));
+
+        touchPos = {x, y};
+        fingerprint = {opacity: 1, x, y};
+      }
+
+      function handleEnd(e) {
+        e.preventDefault();
+        interacting = false;
+
+        setTimeout(() => {
+          if (!interacting) {
+            fingerprint.opacity = 0;
+          }
+        }, 1000);
+      }
+
+      canvas.addEventListener('mousedown', handleStart);
+      canvas.addEventListener('mousemove', handleMove);
+      canvas.addEventListener('mouseup', handleEnd);
+      canvas.addEventListener('mouseleave', handleEnd);
+      canvas.addEventListener('touchstart', handleStart);
+      canvas.addEventListener('touchmove', handleMove);
+      canvas.addEventListener('touchend', handleEnd);
+
+      initParticles();
+      animate();
+    });
+  </script>
+</body>
+
+</html>
