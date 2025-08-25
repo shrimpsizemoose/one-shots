@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Обратные квадраты</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+
+    .info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="info" id="info">
+    Кликните для создания точки притяжения (максимум 3)
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    let particles = [];
+    let gravityPoints = [];
+    let gravityTimer = null;
+    let timeLeft = 0;
+
+    function loadImageAndCreateParticles() {
+      const img = new Image();
+
+      img.onload = function () {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.4;
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+
+        tempCanvas.width = scaledWidth;
+        tempCanvas.height = scaledHeight;
+        tempCtx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+        const imageData = tempCtx.getImageData(0, 0, scaledWidth, scaledHeight);
+
+        particles = [];
+        const positions = [
+          {x: canvas.width * 0.25, y: canvas.height * 0.5},
+          {x: canvas.width * 0.5, y: canvas.height * 0.5},
+          {x: canvas.width * 0.75, y: canvas.height * 0.5}
+        ];
+
+        positions.forEach(pos => {
+          const x0 = pos.x - scaledWidth / 2;
+          const y0 = pos.y - scaledHeight / 2;
+
+          for (let y = 0; y < scaledHeight; y += 2) {
+            for (let x = 0; x < scaledWidth; x += 2) {
+              const pixel = getPixel(imageData, x, y);
+
+              if (isBlackPixel(pixel)) {
+                particles.push({
+                  x: x0 + x,
+                  y: y0 + y,
+                  originalX: x0 + x,
+                  originalY: y0 + y,
+                  vx: 0,
+                  vy: 0,
+                  size: 1.5,
+                  color: `rgb(${pixel.r}, ${pixel.g}, ${pixel.b})`
+                });
+              }
+            }
+          }
+        });
+
+        console.log(`Создано ${particles.length} частиц`);
+      };
+
+      img.onerror = function () {
+        console.log('Не удалось загрузить картинку, используем простой паттерн');
+        createSimplePattern();
+      };
+
+      img.src = 'atom.png';
+    }
+
+    function getPixel(imageData, x, y) {
+      const index = (y * imageData.width + x) * 4;
+      return {
+        r: imageData.data[index],
+        g: imageData.data[index + 1],
+        b: imageData.data[index + 2],
+        a: imageData.data[index + 3]
+      };
+    }
+
+    function isBlackPixel(pixel) {
+      // прозрачные нахер
+      if (pixel.a < 128) return false;
+
+      // ленивая эвристика чтобы вырубить зелёный
+      if (pixel.g > pixel.r && pixel.g > pixel.b && pixel.g > 100) return false;
+
+      // только чёрный пиксель идёт играть в баскетбол
+      const brightness = (pixel.r + pixel.g + pixel.b) / 3;
+      return brightness < 128;
+    }
+
+    // ugly simple pattern as a fallback
+    function createSimplePattern() {
+      particles = [];
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.2) {
+        for (let r = 0; r < 50; r += 3) {
+          const x = centerX + Math.cos(angle) * r;
+          const y = centerY + Math.sin(angle) * r * 0.3;
+          particles.push({
+            x: x,
+            y: y,
+            originalX: x,
+            originalY: y,
+            vx: 0,
+            vy: 0,
+            size: 2,
+            color: '#000'
+          });
+        }
+      }
+    }
+
+    function updatePhysics() {
+      particles.forEach(pp => {
+        let Fx = 0;
+        let Fy = 0;
+
+        gravityPoints.forEach(gp => {
+          const dx = gp.x - pp.x;
+          const dy = gp.y - pp.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+
+          if (d > 1) {
+            const force = 50 / (d * d);
+            Fx += (dx / d) * force;
+            Fy += (dy / d) * force;
+          }
+        });
+
+        pp.vx += Fx;
+        pp.vy += Fy;
+
+        const returnForce = 0.02;
+        pp.vx += (pp.originalX - pp.x) * returnForce;
+        pp.vy += (pp.originalY - pp.y) * returnForce;
+
+        // decay
+        pp.vx *= 0.98;
+        pp.vy *= 0.98;
+
+        pp.x += pp.vx;
+        pp.y += pp.vy;
+      });
+    }
+
+    function render() {
+      ctx.fillStyle = '#138815';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(particle => {
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      const colors = ['#ff0000', '#0066ff', '#9900cc'];
+      gravityPoints.forEach((point, index) => {
+        // point itself
+        ctx.fillStyle = colors[index];
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // interaction radius
+        ctx.strokeStyle = colors[index] + '40';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 150, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // многострадальный мастер неврубона на тейбл
+        // полная фигня, проще сделать свой label
+        ctx.fillStyle = 'white';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(index + 1, point.x, point.y + 5);
+      });
+    }
+
+    function handleClick(e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+      gravityPoints.push({x: x, y: y});
+
+      if (gravityPoints.length > 3) {
+        gravityPoints.shift();
+      }
+
+      if (gravityTimer) clearInterval(gravityTimer);
+      timeLeft = 20;
+
+      gravityTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          gravityPoints = [];
+          clearInterval(gravityTimer);
+          gravityTimer = null;
+        }
+      }, 1000);
+    }
+
+    function updateInfo() {
+      const info = document.getElementById('info');
+
+      if (gravityPoints.length > 0 && timeLeft > 0) {
+        info.innerHTML = `Точек притяжения: ${gravityPoints.length}/3<br>Автоотключение через: ${timeLeft} сек`;
+      } else if (gravityPoints.length === 0 && isReturning()) {
+        info.innerHTML = 'Частицы возвращаются на места...';
+      } else {
+        info.innerHTML = 'Кликните для создания точки притяжения (максимум 3)';
+      }
+    }
+
+    function isReturning() {
+      return particles.some(p => {
+        const dist = Math.sqrt((p.x - p.originalX) ** 2 + (p.y - p.originalY) ** 2);
+        return dist > 10;
+      });
+    }
+
+    canvas.addEventListener('click', handleClick);
+    canvas.addEventListener('touchstart', handleClick);
+
+    function animate() {
+      updatePhysics();
+      render();
+      updateInfo();
+      requestAnimationFrame(animate);
+    }
+
+    loadImageAndCreateParticles();
+    animate();
+  </script>
+</body>
+
+</html>

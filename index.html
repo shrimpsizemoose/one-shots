@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Зарисовки</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 40px;
+      text-align: center;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 25px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-bottom: 1px solid #eee;
+    }
+
+    .card-content {
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 1.4em;
+      margin: 0 0 10px;
+      color: #1a1a1a;
+    }
+
+    .card-description {
+      font-size: 0.95em;
+      line-height: 1.5;
+      color: #666;
+      margin-bottom: 15px;
+    }
+
+    .card-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .card-link:hover .card {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-link-text {
+      color: #2962ff;
+      font-weight: 500;
+    }
+
+    .card-link-text:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Симуляционные зарисовки</h1>
+    <p>Одностраничные симуляции всяких физических эффектов</p>
+    <p><em>Подпишись <a href="https://t.me/oscar_mozhayskij">на канал</a>, бро</em></p>
+  </header>
+  <main>
+    <section class="grid-container">
+      <a href="signals/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/signals.png" alt="Signals visualization">
+          <div class="card-content">
+            <h2 class="card-title">Сигналы</h2>
+            <p class="card-description">Складывание разных форм сигналов: дельта-функция, квадратный, асимметричный и
+              затухающие сигналы.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="runawaybaby/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/runawaybaby.png" alt="Runaway visualization">
+          <div class="card-content">
+            <h2 class="card-title">Задача убегания</h2>
+            <p class="card-description">Хищник преследует жертву, которая движется по разным траекториям: синусоида,
+              круг, спираль.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="waves/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/waves.png" alt="Wave interference">
+          <div class="card-content">
+            <h2 class="card-title">Интерференция волн</h2>
+            <p class="card-description">Интерактивная демонстрация интерференции волн на поверхности.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="interpolation/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/interpolation.png" alt="Interpolation">
+          <div class="card-content">
+            <h2 class="card-title">Интерполяция</h2>
+            <p class="card-description">Эксперименты с различными методами интерполяции точек.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="weights/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/weights.png" alt="Weighted curves">
+          <div class="card-content">
+            <h2 class="card-title">Кривые с весами</h2>
+            <p class="card-description">Построение линий, парабол и кубических кривых через точки с весами.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="mercury/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/mercury.png" alt="Retrograde Mercury">
+          <div class="card-content">
+            <h2 class="card-title">Ретроградный Меркурий</h2>
+            <p class="card-description">Визуализация популярного астрономического явления.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="vertical-kernel/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/vertical-kernel.png" alt="Vertical lines">
+          <div class="card-content">
+            <h2 class="card-title">Вертикальные линии</h2>
+            <p class="card-description">Эксперимент со свёрткой изображения (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="moire/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/moire.png" alt="Moire patterns">
+          <div class="card-content">
+            <h2 class="card-title">Муары</h2>
+            <p class="card-description">Интерактивная демонстрация муаровых узоров (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="squiggles/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/squiggles.png" alt="Ribbon animation">
+          <div class="card-content">
+            <h2 class="card-title">Ленточки</h2>
+            <p class="card-description">Анимированные ленты в 42 строки кода на JavaScript (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="black-waves/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/black-waves.png" alt="Black waves">
+          <div class="card-content">
+            <h2 class="card-title">Чёрные волны</h2>
+            <p class="card-description">Интерактивные чёрные волны на чёрном фоне (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="iso-life/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/iso-life.png" alt="Isometric Game of Life">
+          <div class="card-content">
+            <h2 class="card-title">Изометрическая игра «жизнь»</h2>
+            <p class="card-description">Классическая игра «жизнь» в изометрической проекции (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="landscape/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/landscape.png" alt="Simple landscape">
+          <div class="card-content">
+            <h2 class="card-title">Пейзаж из примитивов</h2>
+            <p class="card-description">Интерактивный пейзаж из простых геометрических форм (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="complex-primes/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/gauss-eisenstein-primes.png" alt="Complex primes">
+          <div class="card-content">
+            <h2 class="card-title">Комплексные простые числа</h2>
+            <p class="card-description">Визуализация простых чисел Гаусса и Эйзенштейна на комплексной плоскости.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="circles/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/circles.png" alt="Chaotic circles">
+          <div class="card-content">
+            <h2 class="card-title">Кружочки</h2>
+            <p class="card-description">Анимация формирования фигур из движущихся кружочков (Genuary 2025).</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="ecosystem/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/simple-ecosystem.png" alt="Sheep ecosystem">
+          <div class="card-content">
+            <h2 class="card-title">Овцы и трава</h2>
+            <p class="card-description">Простая экосистема с овцами, поедающими траву.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="flower/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/flower.png" alt="Parametric flower">
+          <div class="card-content">
+            <h2 class="card-title">Цветочек</h2>
+            <p class="card-description">Параметрический генератор цветов с настраиваемыми параметрами.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="poly-3vs2/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/poly-3vs2.png" alt="Polyrhythm 3:2">
+          <div class="card-content">
+            <h2 class="card-title">Полиритм 3:2</h2>
+            <p class="card-description">Визуализация и озвучивание полиритма «3 через 2».</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="poly-4vs3/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/poly-4vs3.png" alt="Polyrhythm 4:3">
+          <div class="card-content">
+            <h2 class="card-title">Полиритм 4:3</h2>
+            <p class="card-description">Визуализация и озвучивание полиритма «4 через 3».</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="oscillator/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/linear-oscillator.png" alt="Linear oscillator">
+          <div class="card-content">
+            <h2 class="card-title">Линейный осциллятор</h2>
+            <p class="card-description">Визуализация грузика на пружинке и его фазового портрета.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="rocket/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/rocket.png" alt="Tsiolkovsky equation">
+          <div class="card-content">
+            <h2 class="card-title">Уравнение Циолковского</h2>
+            <p class="card-description">Интерактивный график ракетного уравнения.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="vdw-particles/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/vdw-particles.png" alt="Van der Waals forces">
+          <div class="card-content">
+            <h2 class="card-title">Силы Ван дер Ваальса</h2>
+            <p class="card-description">Симуляция частиц с силами притяжения и отталкивания.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="reverse-squares/" class="card-link">
+        <div class="card">
+          <img src="./screenshots/reverse-squares.png" alt="Reverse squares">
+          <div class="card-content">
+            <h2 class="card-title">Обратные квадраты</h2>
+            <p class="card-description">Симуляция закона обратных квадратов когда у нас несколько точек притяжения.</p>
+            <span class="card-link-text">Открыть визуализацию →</span>
+          </div>
+        </div>
+      </a>
+    </section>
+  </main>
+</body>
+
+</html>
